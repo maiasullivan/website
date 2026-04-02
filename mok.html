@@ -7,9 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
-
-  <!-- Strudel — runs entirely in the browser, no server needed -->
-  <script src="https://unpkg.com/@strudel/repl@1.1.1/dist/strudel-repl.js"></script>
+  <script src="https://unpkg.com/@strudel/repl@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hydra-synth/dist/hydra-synth.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -21,590 +20,574 @@
       --muted: #5a5550;
       --line: #2a2622;
       --green: #3ddc84;
-      --panel: rgba(14,12,10,0.92);
+      --panel: rgba(14,12,10,0.96);
+      --bar: 1.8rem;
     }
 
-    html, body {
-      height: 100%;
-      width: 100%;
+    html, body { height: 100%; width: 100%; overflow: hidden;
+      background: #000; color: var(--ink);
+      font-family: 'Space Mono', monospace; }
+
+    /* Hydra canvas — stretches inside #shell, behind editors */
+    #hc {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      z-index: 1; display: none; pointer-events: none;
+    }
+
+    #shell {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+    }
+
+    /* Top bar */
+    #topbar {
+      height: var(--bar); flex-shrink: 0;
+      display: flex; align-items: stretch;
+      border-bottom: 1px solid var(--line);
       background: var(--bg);
-      color: var(--ink);
-      font-family: 'Space Mono', monospace;
-      overflow: hidden;
+      position: relative; z-index: 10;
     }
 
-    /* ── FULL-SCREEN EDITOR ─────────────── */
-    #editor-wrap {
-      position: fixed;
-      inset: 0;
+    #back-cell {
+      display: flex; align-items: center;
+      padding: 0 0.9rem;
+      border-right: 1px solid var(--line); flex-shrink: 0;
     }
 
-    #code {
-      width: 100%;
-      height: 100%;
-      background: var(--bg);
-      color: var(--ink);
-      font-family: 'Space Mono', monospace;
-      font-size: 0.9rem;
-      line-height: 1.75;
-      border: none;
-      outline: none;
-      resize: none;
-      padding: 3.5rem 4rem;
-      caret-color: var(--blue);
-      tab-size: 2;
-    }
-
-    /* ── CORNER UI ──────────────────────── */
-    /* all four corners: fixed, small, unobtrusive */
-    .corner {
-      position: fixed;
-      z-index: 50;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .corner-tl { top: 0; left: 0; padding: 0.9rem 1.2rem; }
-    .corner-tc { top: 0; left: 50%; transform: translateX(-50%); padding: 0.9rem 0; }
-    .corner-tr { top: 0; right: 0; padding: 0.9rem 1.2rem; }
-    .corner-bl { bottom: 0; left: 0; padding: 0.9rem 1.2rem; }
-    .corner-br { bottom: 0; right: 0; padding: 0.9rem 1.2rem; }
-
-    /* back link */
     .back-link {
-      text-decoration: none;
-      color: var(--muted);
-      font-size: 0.65rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
+      text-decoration: none; color: var(--muted);
+      font-size: 0.6rem; letter-spacing: 0.12em;
+      text-transform: uppercase; white-space: nowrap;
       transition: color 0.2s;
     }
     .back-link:hover { color: var(--ink); }
 
-    /* brand */
-    .brand {
-      font-family: 'Instrument Serif', serif;
-      font-size: 1.1rem;
-      color: var(--blue);
-      letter-spacing: 0.04em;
-      font-style: italic;
-    }
+    #pane-headers { flex: 1; display: flex; align-items: stretch; min-width: 0; }
 
-    /* corner buttons — invisible until hover */
-    .corner-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--muted);
-      font-family: 'Space Mono', monospace;
-      font-size: 0.65rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      padding: 0.2rem 0;
-      transition: color 0.2s;
-      position: relative;
-    }
-
-    .corner-btn:hover { color: var(--ink); }
-
-    /* status dot */
-    .status-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--muted);
-      display: inline-block;
-      transition: background 0.3s;
-    }
-
-    .status-dot.playing { background: var(--green); animation: pulse 1.8s ease infinite; }
-    .status-dot.error   { background: #e05030; }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
-    /* ── DROPDOWNS ──────────────────────── */
-    .dropdown {
-      position: fixed;
-      z-index: 100;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      backdrop-filter: blur(8px);
-      min-width: 180px;
-      display: none;
-      flex-direction: column;
-    }
-
-    .dropdown.open { display: flex; }
-
-    .dropdown-item {
-      padding: 0.7rem 1rem;
-      font-size: 0.68rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--muted);
-      cursor: pointer;
-      border-bottom: 1px solid var(--line);
-      transition: color 0.15s, background 0.15s;
-      display: flex;
+    .ph {
+      flex: 1; display: flex; align-items: center;
       justify-content: space-between;
-      align-items: center;
-      text-decoration: none;
+      padding: 0 0.5rem 0 0.5rem;
+      border-right: 1px solid var(--line);
+      position: relative; min-width: 0;
     }
+    .ph:last-child { border-right: none; }
 
-    .dropdown-item:last-child { border-bottom: none; }
-    .dropdown-item:hover { color: var(--ink); background: rgba(255,255,255,0.03); }
-    .dropdown-item.active { color: var(--blue); }
-    .dropdown-item .check { color: var(--blue); font-size: 0.8rem; }
+    .target-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-family: 'Space Mono', monospace;
+      font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 0.15rem 0.3rem;
+      display: flex; align-items: center; gap: 0.3rem;
+      transition: color 0.15s;
+    }
+    .target-btn:hover { color: var(--ink); }
+    .target-btn .caret { opacity: 0.45; font-size: 0.5rem; }
 
-    .dropdown-header {
-      padding: 0.5rem 1rem 0.4rem;
-      font-size: 0.55rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--muted);
-      opacity: 0.6;
+    .target-dd {
+      position: absolute; top: var(--bar); left: 0;
+      background: #1a1714; border: 1px solid var(--line);
+      z-index: 300; display: none; flex-direction: column;
+      min-width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .target-dd.open { display: flex; }
+
+    .topt {
+      padding: 0.5rem 0.85rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); cursor: pointer;
       border-bottom: 1px solid var(--line);
+      transition: color 0.1s, background 0.1s;
+    }
+    .topt:last-child { border-bottom: none; }
+    .topt:hover { color: var(--ink); background: rgba(255,255,255,0.04); }
+    .topt.active { color: var(--blue); }
+
+    .ph-close {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 0.6rem; padding: 0.15rem 0.3rem;
+      opacity: 0; transition: opacity 0.15s, color 0.15s; line-height: 1;
+    }
+    .ph:hover .ph-close { opacity: 0.4; }
+    .ph-close:hover { opacity: 1 !important; color: var(--ink); }
+
+    #cmd-cell {
+      display: flex; align-items: center;
+      padding: 0 0.85rem;
+      border-left: 1px solid var(--line); flex-shrink: 0;
     }
 
-    /* target dropdown — bottom-left */
-    #dd-target { bottom: 2.5rem; left: 0; }
+    .chrome-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-family: 'Space Mono', monospace;
+      font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .chrome-btn:hover { color: var(--ink); }
 
-    /* session dropdown — bottom-right */
-    #dd-session { bottom: 2.5rem; right: 0; }
+    /* Panes */
+    #panes { flex: 1; display: flex; min-height: 0; position: relative; z-index: 10; }
 
-    /* ── CONSOLE ────────────────────────── */
-    #console-wrap {
-      position: fixed;
-      bottom: 2.4rem;
-      left: 50%;
-      transform: translateX(-50%);
-      width: min(600px, 80vw);
-      max-height: 160px;
-      overflow-y: auto;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      backdrop-filter: blur(8px);
-      display: none;
-      flex-direction: column-reverse;
-      z-index: 40;
+    .pane {
+      flex: 1; position: relative;
+      display: flex; flex-direction: column;
+      min-width: 0;
+      border-right: 1px solid var(--line);
+      /* transparent — canvas shows through */
+      background: transparent;
+    }
+    .pane:last-child { border-right: none; }
+
+    /* Non-hydra: transparent editor, hydra shows through everywhere */
+    .pane:not(.is-hydra) .pane-editor { background: transparent; }
+
+    /* Hydra: editor transparent, text readable over visuals */
+    .pane.is-hydra .pane-editor {
+      background: transparent !important;
+      color: rgba(240,235,224,0.92);
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
     }
 
-    #console-wrap.visible { display: flex; }
+    .pane-editor {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      border: none; outline: none;
+      color: var(--ink);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.95);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.88rem; line-height: 1.75;
+      padding: 1.4rem 2rem 4rem;
+      resize: none; caret-color: var(--blue);
+      tab-size: 2; z-index: 10;
+    }
 
-    .log-line {
-      padding: 0.3rem 0.9rem;
-      font-size: 0.65rem;
-      line-height: 1.6;
+    .se {
+      position: absolute; width: 1px; height: 1px;
+      overflow: hidden; opacity: 0; pointer-events: none; z-index: 0;
+    }
+
+    /* Bottom bar */
+    #botbar {
+      height: var(--bar); flex-shrink: 0;
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
       border-top: 1px solid var(--line);
-      color: var(--muted);
-      white-space: pre-wrap;
+      background: var(--bg);
+      position: relative; z-index: 10;
     }
 
-    .log-line:first-child { border-top: none; }
-    .log-line.ok  { color: var(--green); }
-    .log-line.err { color: #e06050; }
-    .log-line.info { color: var(--ink); }
+    .bot-l { display: flex; align-items: center; gap: 0.6rem; }
 
-    /* ── EVAL FLASH ─────────────────────── */
-    #flash {
+    .sdot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--muted); transition: background 0.3s; flex-shrink: 0;
+    }
+    .sdot.playing { background: var(--green); }
+    .sdot.error   { background: #e05030; }
+
+    /* Log */
+    #log {
       position: fixed;
-      inset: 0;
-      background: rgba(13,25,180,0.05);
-      pointer-events: none;
-      opacity: 0;
-      z-index: 200;
-      transition: opacity 0.08s;
+      bottom: calc(var(--bar) + 0.5rem);
+      left: 50%; transform: translateX(-50%);
+      width: min(500px, 74vw); max-height: 130px; overflow-y: auto;
+      background: var(--panel); border: 1px solid var(--line);
+      display: none; flex-direction: column-reverse;
+      z-index: 400; font-size: 0.63rem; line-height: 1.7;
+    }
+    #log.vis { display: flex; }
+    .ll { padding: 0.22rem 0.75rem; color: var(--muted); border-top: 1px solid var(--line); }
+    .ll:first-child { border-top: none; }
+    .ll.ok   { color: var(--green); }
+    .ll.err  { color: #e06050; }
+    .ll.info { color: var(--ink); }
+
+    /* Palette */
+    #pal-bg {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(14,12,10,0.55); backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center;
+    }
+    #pal-bg.open { display: flex; }
+
+    #pal {
+      background: #1a1714; border: 1px solid var(--line);
+      width: min(460px, 88vw); display: flex; flex-direction: column;
     }
 
-    #flash.active { opacity: 1; }
-
-    /* ── STRUDEL hidden iframe ──────────── */
-    /* Strudel needs an AudioContext — we drive it via its JS API */
-    #strudel-container {
-      display: none;
+    #pal-top {
+      display: flex; align-items: center; gap: 0.7rem;
+      padding: 0.8rem 1rem; border-bottom: 1px solid var(--line);
     }
 
-    /* ── HINTS (fade out) ───────────────── */
-    #hints {
-      position: fixed;
-      bottom: 2.5rem;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 0.6rem;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      text-transform: uppercase;
-      opacity: 1;
-      transition: opacity 1s;
-      pointer-events: none;
-      white-space: nowrap;
-      z-index: 30;
+    #pal-in {
+      background: none; border: none; outline: none;
+      color: var(--ink); font-family: 'Space Mono', monospace;
+      font-size: 0.78rem; width: 100%;
     }
+    #pal-in::placeholder { color: var(--muted); }
+    .si { color: var(--muted); font-size: 0.72rem; }
 
-    #hints.hide { opacity: 0; }
+    .ps { padding: 0.5rem 1rem 0.2rem; font-size: 0.5rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); opacity: 0.55; }
+    .pi { padding: 0.62rem 1rem; font-size: 0.7rem; color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 0.65rem; transition: background 0.1s, color 0.1s; }
+    .pi:hover, .pi.focused { background: rgba(255,255,255,0.04); color: var(--ink); }
+    .pi .ico { width: 1rem; text-align: center; }
+    .pi .sc { margin-left: auto; font-size: 0.5rem; opacity: 0.4; }
+    .pt { padding: 0.4rem 1rem; font-size: 0.52rem; color: var(--muted); opacity: 0.4; border-top: 1px solid var(--line); }
+
+    /* Flash */
+    #flash { position: fixed; inset: 0; background: rgba(13,25,180,0.05); pointer-events: none; opacity: 0; z-index: 300; transition: opacity 0.07s; }
+    #flash.on { opacity: 1; }
   </style>
 </head>
 <body>
 
-  <!-- TOP-LEFT: back -->
-  <div class="corner corner-tl">
-    <a href="index.html" class="back-link">← maiasullivan.com</a>
+<div id="shell">
+<canvas id="hc"></canvas>
+  <div id="topbar">
+    <div id="back-cell"><a href="index.html" class="back-link">← maiasullivan.com</a></div>
+    <div id="pane-headers"></div>
+    <div id="cmd-cell"><button class="chrome-btn" onclick="openPal()" title="Ctrl+J">⌘</button></div>
   </div>
-
-  <!-- TOP-CENTER: brand -->
-  <div class="corner corner-tc">
-    <span class="brand">mok</span>
-  </div>
-
-  <!-- TOP-RIGHT: target switcher button -->
-  <div class="corner corner-tr">
-    <button class="corner-btn" id="btn-target" onclick="toggleDD('dd-target', 'btn-target', 'bl')">
-      <span id="target-label">strudel</span> ▾
-    </button>
-  </div>
-
-  <!-- BOTTOM-LEFT: status + console toggle -->
-  <div class="corner corner-bl">
-    <span class="status-dot" id="status-dot"></span>
-    <button class="corner-btn" id="btn-console" onclick="toggleConsole()">log</button>
-  </div>
-
-  <!-- BOTTOM-RIGHT: session menu -->
-  <div class="corner corner-br">
-    <button class="corner-btn" onclick="toggleDD('dd-session', 'btn-session', 'br')" id="btn-session">session ▾</button>
-  </div>
-
-  <!-- EDITOR -->
-  <div id="editor-wrap">
-    <textarea id="code" spellcheck="false">-- mok
--- target: strudel (runs in browser — no setup needed)
--- ctrl+enter to eval  ·  ctrl+. to silence
-
-note("c3 eb3 g3 bb3")
-  .slow(2)
-  .s("piano")
-</textarea>
-  </div>
-
-  <!-- DROPDOWNS -->
-  <div class="dropdown" id="dd-target">
-    <div class="dropdown-header">target</div>
-    <div class="dropdown-item active" data-target="strudel" onclick="setTarget('strudel', this)">
-      strudel <span class="check">✓</span>
+  <div id="panes"></div>
+  <div id="botbar">
+    <div class="bot-l">
+      <span class="sdot" id="sdot"></span>
+      <button class="chrome-btn" onclick="toggleLog()">log</button>
     </div>
-    <div class="dropdown-item" data-target="tidal" onclick="setTarget('tidal', this)">
-      TidalCycles
-    </div>
-    <div class="dropdown-item" data-target="hydra" onclick="setTarget('hydra', this)">
-      Hydra
-    </div>
+    <button class="chrome-btn" onclick="silenceAll()">silence ·</button>
   </div>
+</div>
 
-  <div class="dropdown" id="dd-session">
-    <div class="dropdown-header">session</div>
-    <div class="dropdown-item" onclick="newSession()">new session</div>
-    <div class="dropdown-item" onclick="copyLink()">copy session link</div>
-    <div class="dropdown-item" id="collab-note" style="opacity:0.4;cursor:default;font-size:0.58rem;">
-      collab: coming soon
+<div id="pal-bg" onclick="palBgClick(event)">
+  <div id="pal">
+    <div id="pal-top">
+      <span class="si">⌕</span>
+      <input id="pal-in" placeholder="command or search…" oninput="filterPal(this.value)" onkeydown="palNav(event)" />
     </div>
+    <div id="pal-body"></div>
+    <div class="pt">Ctrl+J / Cmd+J to toggle</div>
   </div>
+</div>
 
-  <!-- CONSOLE -->
-  <div id="console-wrap"></div>
+<div id="log"></div>
+<div id="flash"></div>
 
-  <!-- HINTS -->
-  <div id="hints">ctrl+enter · eval &nbsp;&nbsp; ctrl+. · silence</div>
+<script>
+  // ── STATE ──────────────────────────────
+  let panes = [], paneCount = 0, logVis = false;
+  let hydraInstance = null; // single Hydra instance, shared
 
-  <!-- FLASH -->
-  <div id="flash"></div>
+  const STARTERS = {
+    strudel: 'setcpm(30)\nnote("c3 eb3 g3 bb3")\n  .s("piano")',
+    hydra:   'osc(10, 0.1, 1.5)\n  .color(0.05, 0.1, 0.7)\n  .rotate([0.2,0.4], 0.01)\n  .out()',
+    tidal:   '-- needs local SuperCollider + flok-eval\nd1 $ s "bd ~ sd ~"\n\nd2 $ n (slow 2 $ run 8) # s "arpy"\n   # gain 0.8'
+  };
 
-  <!-- Hidden Strudel container -->
-  <div id="strudel-container"></div>
+  // ── HYDRA SETUP ────────────────────────
+  // One Hydra instance pointed at the full-screen canvas.
+  // We call this lazily on first hydra eval, so the canvas is visible first.
+  function getHydra() {
+    if (hydraInstance) return hydraInstance;
+    const canvas = document.getElementById('hc');
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.display = 'block';
+    // makeGlobal: true — puts osc/src/out/etc on window.
+    // This is fine because we only ever have ONE Hydra instance.
+    // Strudel doesn't use these names.
+    hydraInstance = new Hydra({ canvas, detectAudio: false, makeGlobal: true });
+    return hydraInstance;
+  }
 
-  <script>
-    // ── STATE ────────────────────────────
-    let currentTarget = 'strudel';
-    let strudelRepl = null;
-    let consoleVisible = false;
-    let strudelReady = false;
-
-    // ── STRUDEL SETUP ────────────────────
-    // Strudel's repl API: we create a hidden repl element and drive it
-    function initStrudel() {
-      const container = document.getElementById('strudel-container');
-      // strudel-repl custom element (from the imported script)
-      if (customElements.get('strudel-repl')) {
-        strudelRepl = document.createElement('strudel-repl');
-        strudelRepl.setAttribute('hideHeader', '');
-        strudelRepl.setAttribute('hideFooter', '');
-        container.appendChild(strudelRepl);
-        strudelReady = true;
-        log('strudel loaded · ctrl+enter to play', 'info');
-      } else {
-        // fallback: wait for custom element to register
-        customElements.whenDefined('strudel-repl').then(() => {
-          initStrudel();
-        }).catch(() => {
-          log('strudel unavailable — check connection', 'err');
-        });
-      }
+  window.addEventListener('resize', () => {
+    const canvas = document.getElementById('hc');
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    if (hydraInstance) {
+      try { hydraInstance.setResolution(window.innerWidth, window.innerHeight); } catch(e) {}
     }
+  });
 
-    // Wait for scripts to load
-    window.addEventListener('load', () => {
-      setTimeout(initStrudel, 500);
+  function showHydraCanvas(show) {
+    document.getElementById('hc').style.display = show ? 'block' : 'none';
+  }
+
+  // ── BOOT ───────────────────────────────
+  window.addEventListener('load', () => { addPane('strudel'); buildPal(); });
+
+  // ── PANE MANAGEMENT ────────────────────
+  function addPane(target = 'strudel') {
+    if (panes.length >= 3) return;
+    const id = ++paneCount;
+
+    // Header tab
+    const ph = document.createElement('div');
+    ph.className = 'ph'; ph.id = `ph-${id}`;
+
+    const tBtn = document.createElement('button');
+    tBtn.className = 'target-btn';
+    tBtn.innerHTML = `<span class="tlbl">${target === 'tidal' ? 'TidalCycles' : target}</span><span class="caret">▾</span>`;
+    tBtn.onclick = e => { e.stopPropagation(); toggleDD(id); };
+
+    const dd = document.createElement('div');
+    dd.className = 'target-dd'; dd.id = `dd-${id}`;
+    ['strudel','hydra','tidal'].forEach(t => {
+      const o = document.createElement('div');
+      o.className = 'topt' + (t === target ? ' active' : '');
+      o.textContent = t === 'tidal' ? 'TidalCycles' : t;
+      o.dataset.t = t;
+      o.onclick = e => { e.stopPropagation(); setPaneTarget(id, t); };
+      dd.appendChild(o);
     });
 
-    // ── EVAL ─────────────────────────────
-    async function doEval() {
-      const code = getEvalCode();
-      doFlash();
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'ph-close'; closeBtn.textContent = '✕';
+    closeBtn.onclick = () => removePane(id);
 
-      if (currentTarget === 'strudel') {
-        await evalStrudel(code);
-      } else if (currentTarget === 'hydra') {
-        evalHydra(code);
-      } else {
-        log(`tidal: code sent (needs local relay) — see readme`, 'info');
-        log(code.split('\n')[0], 'ok');
+    ph.appendChild(tBtn); ph.appendChild(dd); ph.appendChild(closeBtn);
+    document.getElementById('pane-headers').appendChild(ph);
+
+    // Editor pane
+    const paneEl = document.createElement('div');
+    paneEl.className = 'pane' + (target === 'hydra' ? ' is-hydra' : '');
+    paneEl.id = `pane-${id}`;
+
+    const ta = document.createElement('textarea');
+    ta.className = 'pane-editor'; ta.spellcheck = false;
+    ta.value = STARTERS[target] || '';
+    ta.addEventListener('keydown', e => editorKey(e, id));
+
+    const se = document.createElement('div');
+    se.className = 'se'; se.id = `se-${id}`;
+
+    paneEl.appendChild(ta); paneEl.appendChild(se);
+    document.getElementById('panes').appendChild(paneEl);
+
+    const pane = { id, target, ph, paneEl, editor: ta,
+                   strudelEl: null, strudelReady: false };
+    panes.push(pane);
+
+    if (target === 'strudel') initStrudel(pane);
+    syncHydra();
+    return pane;
+  }
+
+  function removePane(id) {
+    if (panes.length <= 1) return;
+    const idx = panes.findIndex(p => p.id === id);
+    if (idx < 0) return;
+    stopStrudel(panes[idx]);
+    panes[idx].ph.remove();
+    panes[idx].paneEl.remove();
+    panes.splice(idx, 1);
+    syncHydra();
+  }
+
+  function setPaneTarget(id, target) {
+    const p = panes.find(p => p.id === id);
+    if (!p) return;
+    closeAllDD();
+    if (p.target === target) return;
+    if (p.target === 'strudel') stopStrudel(p);
+    p.target = target;
+    p.editor.value = STARTERS[target] || '';
+    p.ph.querySelector('.tlbl').textContent = target === 'tidal' ? 'TidalCycles' : target;
+    p.ph.querySelectorAll('.topt').forEach(o => o.classList.toggle('active', o.dataset.t === target));
+    p.paneEl.classList.toggle('is-hydra', target === 'hydra');
+    if (target === 'strudel' && !p.strudelReady) initStrudel(p);
+    syncHydra();
+  }
+
+  function syncHydra() {
+    const hasHydra = panes.some(p => p.target === 'hydra');
+    showHydraCanvas(hasHydra);
+  }
+
+  // ── STRUDEL ────────────────────────────
+  function initStrudel(pane) {
+    customElements.whenDefined('strudel-editor').then(() => {
+      if (pane.strudelEl) return;
+      const wrap = document.getElementById(`se-${pane.id}`);
+      const el = document.createElement('strudel-editor');
+      el.setAttribute('code', '-- ready');
+      wrap.appendChild(el);
+      pane.strudelEl = el;
+      pane.strudelReady = true;
+    }).catch(e => log('strudel: ' + e.message, 'err'));
+  }
+
+  function stopStrudel(pane) {
+    if (!pane.strudelEl) return;
+    try {
+      const inst = pane.strudelEl.editor || pane.strudelEl;
+      if (typeof inst.stop === 'function') inst.stop();
+      else if (typeof pane.strudelEl.stop === 'function') pane.strudelEl.stop();
+    } catch(e) {}
+  }
+
+  // ── EVAL ───────────────────────────────
+  async function evalPane(id) {
+    const p = panes.find(p => p.id === id);
+    if (!p) return;
+    doFlash();
+    const raw = getCode(p.editor);
+    const code = raw.split('\n').filter(l => !l.trim().startsWith('--')).join('\n').trim();
+    if (!code) return;
+
+    if (p.target === 'strudel') await evalStrudel(p, code);
+    else if (p.target === 'hydra') evalHydra(code);
+    else log('TidalCycles: needs local SuperCollider + flok-eval', 'info');
+  }
+
+  async function evalStrudel(p, code) {
+    if (!p.strudelReady || !p.strudelEl) { log('strudel loading…', 'err'); return; }
+    try {
+      p.strudelEl.setAttribute('code', code);
+      await (p.strudelEl.updateComplete?.catch(() => {}));
+      const inst = p.strudelEl.editor || p.strudelEl;
+      if (typeof inst.evaluate === 'function') await inst.evaluate(code);
+      else if (typeof p.strudelEl.evaluate === 'function') await p.strudelEl.evaluate(code);
+      setStatus('playing'); log('eval → strudel', 'ok');
+    } catch(e) { setStatus('error'); log('strudel: ' + e.message, 'err'); }
+  }
+
+  function evalHydra(code) {
+    try {
+      // Ensure canvas is ready and Hydra is initialised
+      const h = getHydra();
+      if (!h) { log('hydra not ready', 'err'); return; }
+      // makeGlobal:true means osc/out/etc are already on window — just eval
+      // eslint-disable-next-line no-new-func
+      new Function(code)();
+      setStatus('playing'); log('eval → hydra', 'ok');
+    } catch(e) { setStatus('error'); log('hydra: ' + e.message, 'err'); }
+  }
+
+  function silenceAll() {
+    panes.forEach(p => { if (p.target === 'strudel') stopStrudel(p); });
+    setStatus('idle'); log('silence', 'err');
+  }
+
+  function getCode(ta) {
+    const sel = ta.value.substring(ta.selectionStart, ta.selectionEnd).trim();
+    return sel || ta.value;
+  }
+
+  // ── UI HELPERS ─────────────────────────
+  function toggleDD(id) {
+    const dd = document.getElementById(`dd-${id}`);
+    const was = dd.classList.contains('open');
+    closeAllDD();
+    if (!was) dd.classList.add('open');
+  }
+
+  function closeAllDD() {
+    document.querySelectorAll('.target-dd').forEach(d => d.classList.remove('open'));
+  }
+
+  document.addEventListener('click', closeAllDD);
+
+  function setStatus(s) {
+    document.getElementById('sdot').className = 'sdot' + (s !== 'idle' ? ' ' + s : '');
+  }
+
+  function doFlash() {
+    const f = document.getElementById('flash');
+    f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 120);
+  }
+
+  function editorKey(e, id) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); evalPane(id); }
+    if ((e.ctrlKey || e.metaKey) && e.key === '.')     { e.preventDefault(); silenceAll(); }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const ta = e.target, s = ta.selectionStart, end = ta.selectionEnd;
+      ta.value = ta.value.substring(0, s) + '  ' + ta.value.substring(end);
+      ta.selectionStart = ta.selectionEnd = s + 2;
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'j') {
+      e.preventDefault();
+      document.getElementById('pal-bg').classList.contains('open') ? closePal() : openPal();
+    }
+    if (e.key === 'Escape') closePal();
+  });
+
+  function log(msg, type = '') {
+    const wrap = document.getElementById('log');
+    const line = document.createElement('div');
+    line.className = 'll' + (type ? ' ' + type : '');
+    line.textContent = `[${new Date().toTimeString().slice(0,8)}] ${msg}`;
+    wrap.prepend(line);
+    if (type === 'err' || type === 'info') showLog();
+  }
+
+  function showLog() { logVis = true; document.getElementById('log').classList.add('vis'); }
+  function toggleLog() {
+    logVis = !logVis; document.getElementById('log').classList.toggle('vis', logVis);
+  }
+
+  // ── PALETTE ────────────────────────────
+  const CMDS = [
+    { sec:'Panes',    ico:'+', label:'Add Strudel pane',     action:() => { addPane('strudel');  closePal(); } },
+    { sec:'Panes',    ico:'+', label:'Add Hydra pane',       action:() => { addPane('hydra');    closePal(); } },
+    { sec:'Panes',    ico:'+', label:'Add TidalCycles pane', action:() => { addPane('tidal');    closePal(); } },
+    { sec:'Panes',    ico:'✕', label:'Remove active pane',   action:() => { const p = activePane(); if (p) removePane(p.id); closePal(); } },
+    { sec:'Session',  ico:'⎘', label:'Copy session link',    action:() => { navigator.clipboard.writeText(location.href).then(()=>log('link copied','ok')); closePal(); } },
+    { sec:'Playback', ico:'■', label:'Silence all', sc:'Ctrl+.', action:() => { silenceAll(); closePal(); } },
+  ];
+
+  let filtered = [...CMDS], focusIdx = 0;
+
+  function activePane() {
+    return panes.find(p => p.editor === document.activeElement) || panes[0];
+  }
+
+  function buildPal(q = '') {
+    filtered = CMDS.filter(c => !q || c.label.toLowerCase().includes(q.toLowerCase()));
+    focusIdx = 0;
+    const body = document.getElementById('pal-body');
+    body.innerHTML = '';
+    let lastSec = '';
+    filtered.forEach((cmd, i) => {
+      if (cmd.sec !== lastSec) {
+        const s = document.createElement('div');
+        s.className = 'ps'; s.textContent = cmd.sec;
+        body.appendChild(s); lastSec = cmd.sec;
       }
-    }
-
-    async function evalStrudel(code) {
-      if (!strudelReady || !strudelRepl) {
-        log('strudel not ready yet — wait a moment', 'err');
-        return;
-      }
-      try {
-        // Set code in the hidden repl and trigger eval
-        strudelRepl.setAttribute('code', code);
-        // Strudel repl exposes evaluate() method
-        if (typeof strudelRepl.evaluate === 'function') {
-          await strudelRepl.evaluate(code);
-          setStatus('playing');
-          log(`eval → strudel`, 'ok');
-        } else {
-          // Fallback: use the repl's internal scheduler via postMessage-style
-          strudelRepl.dispatchEvent(new CustomEvent('eval', { detail: { code } }));
-          setStatus('playing');
-          log(`eval → strudel`, 'ok');
-        }
-      } catch(e) {
-        setStatus('error');
-        log(`error: ${e.message}`, 'err');
-      }
-    }
-
-    // Hydra — inject into an iframe
-    let hydraFrame = null;
-    function evalHydra(code) {
-      if (!hydraFrame) {
-        hydraFrame = document.createElement('iframe');
-        hydraFrame.src = 'https://hydra.ojack.xyz/api/';
-        hydraFrame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:1;border:none;';
-        hydraFrame.id = 'hydra-frame';
-        document.body.insertBefore(hydraFrame, document.body.firstChild);
-        hydraFrame.onload = () => {
-          setTimeout(() => sendHydraCode(code), 1000);
-        };
-        log('hydra loading...', 'info');
-      } else {
-        sendHydraCode(code);
-      }
-    }
-
-    function sendHydraCode(code) {
-      if (hydraFrame) {
-        hydraFrame.contentWindow.postMessage({ type: 'eval', code }, '*');
-        setStatus('playing');
-        log('eval → hydra', 'ok');
-      }
-    }
-
-    function doSilence() {
-      if (currentTarget === 'strudel' && strudelRepl) {
-        try {
-          if (typeof strudelRepl.stop === 'function') strudelRepl.stop();
-          else strudelRepl.dispatchEvent(new CustomEvent('stop'));
-        } catch(e) {}
-      }
-      if (hydraFrame) {
-        sendHydraCode('solid(0,0,0).out()');
-      }
-      setStatus('idle');
-      log('silence', 'err');
-    }
-
-    function getEvalCode() {
-      const ta = document.getElementById('code');
-      const sel = ta.value.substring(ta.selectionStart, ta.selectionEnd).trim();
-      return sel || ta.value;
-    }
-
-    // ── STATUS ───────────────────────────
-    function setStatus(state) {
-      const dot = document.getElementById('status-dot');
-      dot.className = 'status-dot' + (state !== 'idle' ? ' ' + state : '');
-    }
-
-    // ── FLASH ────────────────────────────
-    function doFlash() {
-      const f = document.getElementById('flash');
-      f.classList.add('active');
-      setTimeout(() => f.classList.remove('active'), 150);
-    }
-
-    // ── CONSOLE ──────────────────────────
-    function log(msg, type = '') {
-      const wrap = document.getElementById('console-wrap');
-      const line = document.createElement('div');
-      line.className = 'log-line' + (type ? ' ' + type : '');
-      const now = new Date();
-      const ts = [now.getHours(), now.getMinutes(), now.getSeconds()]
-        .map(n => String(n).padStart(2,'0')).join(':');
-      line.textContent = `[${ts}] ${msg}`;
-      wrap.prepend(line);
-      // auto-show console on errors
-      if (type === 'err' || type === 'info') showConsole();
-    }
-
-    function toggleConsole() {
-      consoleVisible = !consoleVisible;
-      document.getElementById('console-wrap').classList.toggle('visible', consoleVisible);
-      document.getElementById('hints').classList.add('hide');
-    }
-
-    function showConsole() {
-      consoleVisible = true;
-      document.getElementById('console-wrap').classList.add('visible');
-    }
-
-    // ── TARGET ───────────────────────────
-    function setTarget(target, el) {
-      currentTarget = target;
-      document.getElementById('target-label').textContent = target;
-
-      // update checkmarks
-      document.querySelectorAll('#dd-target .dropdown-item').forEach(i => {
-        i.classList.remove('active');
-        const c = i.querySelector('.check');
-        if (c) c.remove();
-      });
-      el.classList.add('active');
-      el.insertAdjacentHTML('beforeend', '<span class="check">✓</span>');
-
-      // swap starter code
-      const starters = {
-        strudel: `-- strudel (in-browser · no setup needed)
--- ctrl+enter to play
-
-note("c3 eb3 g3 bb3")
-  .slow(2)
-  .s("piano")`,
-        tidal: `-- TidalCycles
--- needs: SuperCollider + TidalCycles + flok-eval running locally
--- see: github.com/munshkr/flok
-
-d1 $ s "bd ~ sd ~"
-
-d2 $ n (slow 2 $ run 8) # s "arpy"
-   # gain 0.8`,
-        hydra: `-- Hydra (in-browser · no setup needed)
--- ctrl+enter to render
-
-osc(10, 0.1, 1.5)
-  .color(0.05, 0.1, 0.7)
-  .rotate(0.2, 0.01)
-  .out()`
-      };
-
-      document.getElementById('code').value = starters[target] || '';
-
-      // hide hydra frame if switching away
-      if (target !== 'hydra' && hydraFrame) {
-        hydraFrame.style.display = 'none';
-      }
-      if (target === 'hydra' && hydraFrame) {
-        hydraFrame.style.display = 'block';
-      }
-
-      closeAllDD();
-      setStatus('idle');
-      log(`target → ${target}`, 'info');
-    }
-
-    // ── SESSION ──────────────────────────
-    function newSession() {
-      const id = Math.random().toString(36).slice(2, 8);
-      history.pushState({}, '', `?s=${id}`);
-      log(`session: ${id}`, 'info');
-      closeAllDD();
-    }
-
-    function copyLink() {
-      navigator.clipboard.writeText(window.location.href)
-        .then(() => log('link copied', 'ok'))
-        .catch(() => log('copy failed', 'err'));
-      closeAllDD();
-    }
-
-    // ── DROPDOWNS ────────────────────────
-    function toggleDD(id, btnId, corner) {
-      const dd = document.getElementById(id);
-      const isOpen = dd.classList.contains('open');
-      closeAllDD();
-      if (!isOpen) dd.classList.add('open');
-    }
-
-    function closeAllDD() {
-      document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
-    }
-
-    document.addEventListener('click', e => {
-      if (!e.target.closest('.dropdown') && !e.target.closest('.corner-btn')) {
-        closeAllDD();
-      }
+      const item = document.createElement('div');
+      item.className = 'pi' + (i === 0 ? ' focused' : '');
+      item.innerHTML = `<span class="ico">${cmd.ico}</span>${cmd.label}<span class="sc">${cmd.sc||''}</span>`;
+      item.onclick = cmd.action;
+      body.appendChild(item);
     });
+  }
 
-    // ── KEYBOARD ─────────────────────────
-    document.addEventListener('keydown', e => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        doEval();
-        hideHints();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === '.') {
-        e.preventDefault();
-        doSilence();
-      }
-      if (e.key === 'Escape') closeAllDD();
-    });
+  function filterPal(v) { buildPal(v); }
+  function palNav(e) {
+    const items = document.querySelectorAll('.pi');
+    if      (e.key === 'ArrowDown') focusIdx = Math.min(focusIdx+1, filtered.length-1);
+    else if (e.key === 'ArrowUp')   focusIdx = Math.max(focusIdx-1, 0);
+    else if (e.key === 'Enter')     { filtered[focusIdx]?.action(); return; }
+    else return;
+    items.forEach((el,i) => el.classList.toggle('focused', i === focusIdx));
+  }
 
-    document.getElementById('code').addEventListener('keydown', e => {
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        const s = e.target.selectionStart;
-        const end = e.target.selectionEnd;
-        e.target.value = e.target.value.substring(0, s) + '  ' + e.target.value.substring(end);
-        e.target.selectionStart = e.target.selectionEnd = s + 2;
-      }
-    });
+  function openPal() {
+    document.getElementById('pal-bg').classList.add('open');
+    document.getElementById('pal-in').value = '';
+    buildPal();
+    setTimeout(() => document.getElementById('pal-in').focus(), 40);
+  }
 
-    // ── HINTS ────────────────────────────
-    let hintTimer = setTimeout(hideHints, 5000);
-    function hideHints() {
-      document.getElementById('hints').classList.add('hide');
-    }
-
-    // ── SESSION FROM URL ─────────────────
-    const params = new URLSearchParams(location.search);
-    if (params.get('s')) {
-      log(`session: ${params.get('s')}`, 'info');
-    }
-  </script>
-
+  function closePal() { document.getElementById('pal-bg').classList.remove('open'); }
+  function palBgClick(e) { if (e.target === document.getElementById('pal-bg')) closePal(); }
+</script>
 </body>
 </html>
