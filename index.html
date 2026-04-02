@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>maia sullivan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream: #f5f0e8;
+      --ink: #1a1612;
+      --blue: rgb(13, 25, 180);
+      --muted: #8a8278;
+      --line: #d4cec4;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--cream);
+      color: var(--ink);
+      font-family: 'Space Mono', monospace;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 100;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 256px;
+    }
+
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 2rem 3rem;
+      border-bottom: 1px solid var(--line);
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.1s forwards;
+    }
+
+    .nav-name {
+      font-family: 'Instrument Serif', serif;
+      font-size: 1.2rem;
+      letter-spacing: 0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2.5rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--ink); }
+    .nav-links a.active { color: var(--blue); }
+
+    .hero {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      padding: 5rem 3rem 4rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .hero-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      opacity: 0;
+      animation: fadeUp 0.7s ease 0.25s forwards;
+    }
+
+    .hero-eyebrow {
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-title {
+      font-family: 'Instrument Serif', serif;
+      font-size: clamp(3.5rem, 7vw, 6rem);
+      line-height: 1.05;
+      margin-bottom: 2rem;
+      font-weight: 400;
+    }
+
+    .hero-title em {
+      font-style: italic;
+      color: var(--blue);
+    }
+
+    .hero-bio {
+      font-size: 0.82rem;
+      line-height: 1.9;
+      color: var(--muted);
+      max-width: 38ch;
+      margin-bottom: 3rem;
+    }
+
+    .mok-card {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      border: 1px solid var(--ink);
+      padding: 1.5rem 2rem;
+      text-decoration: none;
+      color: var(--ink);
+      max-width: 260px;
+      position: relative;
+      overflow: hidden;
+      transition: color 0.3s;
+    }
+
+    .mok-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--ink);
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .mok-card:hover::before { transform: translateY(0); }
+    .mok-card:hover { color: var(--cream); }
+
+    .mok-card span, .mok-card small {
+      position: relative;
+      z-index: 1;
+    }
+
+    .mok-card span {
+      font-family: 'Instrument Serif', serif;
+      font-size: 2rem;
+      letter-spacing: 0.04em;
+    }
+
+    .mok-card small {
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      transition: color 0.3s;
+    }
+
+    .mok-card:hover small { color: var(--line); }
+
+    .arrow {
+      position: absolute;
+      right: 1.5rem;
+      bottom: 1.5rem;
+      font-size: 1.2rem;
+      z-index: 1;
+      transition: transform 0.25s;
+    }
+
+    .mok-card:hover .arrow { transform: translate(3px, -3px); }
+
+    .hero-right {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      animation: fadeUp 0.7s ease 0.45s forwards;
+    }
+
+    .hero-graphic {
+      position: relative;
+      width: 340px;
+      height: 340px;
+    }
+
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+    }
+
+    .ring-1 { inset: 0; animation: spinSlow 40s linear infinite; }
+    .ring-2 { inset: 20px; animation: spinSlow 28s linear infinite reverse; }
+    .ring-3 { inset: 55px; animation: spinSlow 18s linear infinite; }
+
+    .ring-1::after, .ring-2::after, .ring-3::after {
+      content: '';
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+      top: 50%;
+      left: -3px;
+      transform: translateY(-50%);
+    }
+
+    .ring-2::after { background: var(--ink); width: 4px; height: 4px; left: -2px; }
+    .ring-3::after { background: var(--muted); width: 3px; height: 3px; left: -1.5px; }
+
+    .center-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 0.3rem;
+    }
+
+    .center-label span {
+      font-family: 'Instrument Serif', serif;
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .center-label strong {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--ink);
+    }
+
+    .works-strip {
+      border-top: 1px solid var(--line);
+      padding: 2rem 3rem;
+      display: flex;
+      gap: 3rem;
+      align-items: center;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.65s forwards;
+    }
+
+    .works-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .works-list {
+      display: flex;
+      gap: 2.5rem;
+      flex-wrap: wrap;
+    }
+
+    .work-item {
+      font-family: 'Instrument Serif', serif;
+      font-size: 1rem;
+      color: var(--muted);
+      cursor: default;
+      font-style: italic;
+      transition: color 0.2s;
+      position: relative;
+    }
+
+    .work-item::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 1px;
+      background: var(--blue);
+      transition: width 0.3s;
+    }
+
+    .work-item:hover { color: var(--ink); }
+    .work-item:hover::after { width: 100%; }
+
+    footer {
+      padding: 1.5rem 3rem;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      opacity: 0;
+      animation: fadeUp 0.5s ease 0.8s forwards;
+    }
+
+    footer a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+    footer a:hover { color: var(--ink); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spinSlow {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 700px) {
+      nav { padding: 1.5rem; }
+      .nav-links { gap: 1.5rem; }
+      .hero { grid-template-columns: 1fr; padding: 3rem 1.5rem 2rem; gap: 3rem; }
+      .hero-right { order: -1; }
+      .hero-graphic { width: 220px; height: 220px; }
+      .works-strip { padding: 1.5rem; gap: 1.5rem; flex-direction: column; align-items: flex-start; }
+      footer { padding: 1.5rem; flex-direction: column; gap: 0.75rem; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-name">maia sullivan</div>
+    <ul class="nav-links">
+      <li><a href="index.html" class="active">home</a></li>
+      <li><a href="mok.html">mok</a></li>
+      <li><a href="#">work</a></li>
+      <li><a href="#">about</a></li>
+    </ul>
+  </nav>
+
+  <main class="hero">
+    <div class="hero-left">
+      <p class="hero-eyebrow">artist · live coder · maker</p>
+      <h1 class="hero-title">maia<br /><em>sullivan</em></h1>
+      <p class="hero-bio">
+        i make things with sound, code, and time.<br />
+        live music, collaborative tools, and experiments<br />
+        that blur the line between performance and software.
+      </p>
+      <a href="mok.html" class="mok-card">
+        <span>mok</span>
+        <small>collaborative live coding</small>
+        <div class="arrow">↗</div>
+      </a>
+    </div>
+
+    <div class="hero-right">
+      <div class="hero-graphic">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+        <div class="center-label">
+          <span>live /<br/>coded</span>
+          <strong>Melbourne</strong>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="works-strip">
+    <span class="works-label">interests</span>
+    <div class="works-list">
+      <span class="work-item">live coding</span>
+      <span class="work-item">generative music</span>
+      <span class="work-item">collaborative tools</span>
+      <span class="work-item">TidalCycles</span>
+      <span class="work-item">web audio</span>
+      <span class="work-item">performance</span>
+    </div>
+  </div>
+
+  <footer>
+    <span>maiasullivan.com</span>
+    <span>© 2026 maia sullivan</span>
+  </footer>
+
+</body>
+</html>

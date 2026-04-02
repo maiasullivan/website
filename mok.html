@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mok</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+
+  <!-- Strudel — runs entirely in the browser, no server needed -->
+  <script src="https://unpkg.com/@strudel/repl@1.1.1/dist/strudel-repl.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0c0a;
+      --ink: #f0ebe0;
+      --blue: rgb(13, 25, 180);
+      --muted: #5a5550;
+      --line: #2a2622;
+      --green: #3ddc84;
+      --panel: rgba(14,12,10,0.92);
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Space Mono', monospace;
+      overflow: hidden;
+    }
+
+    /* ── FULL-SCREEN EDITOR ─────────────── */
+    #editor-wrap {
+      position: fixed;
+      inset: 0;
+    }
+
+    #code {
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.9rem;
+      line-height: 1.75;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: 3.5rem 4rem;
+      caret-color: var(--blue);
+      tab-size: 2;
+    }
+
+    /* ── CORNER UI ──────────────────────── */
+    /* all four corners: fixed, small, unobtrusive */
+    .corner {
+      position: fixed;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .corner-tl { top: 0; left: 0; padding: 0.9rem 1.2rem; }
+    .corner-tc { top: 0; left: 50%; transform: translateX(-50%); padding: 0.9rem 0; }
+    .corner-tr { top: 0; right: 0; padding: 0.9rem 1.2rem; }
+    .corner-bl { bottom: 0; left: 0; padding: 0.9rem 1.2rem; }
+    .corner-br { bottom: 0; right: 0; padding: 0.9rem 1.2rem; }
+
+    /* back link */
+    .back-link {
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--ink); }
+
+    /* brand */
+    .brand {
+      font-family: 'Instrument Serif', serif;
+      font-size: 1.1rem;
+      color: var(--blue);
+      letter-spacing: 0.04em;
+      font-style: italic;
+    }
+
+    /* corner buttons — invisible until hover */
+    .corner-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.2rem 0;
+      transition: color 0.2s;
+      position: relative;
+    }
+
+    .corner-btn:hover { color: var(--ink); }
+
+    /* status dot */
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      display: inline-block;
+      transition: background 0.3s;
+    }
+
+    .status-dot.playing { background: var(--green); animation: pulse 1.8s ease infinite; }
+    .status-dot.error   { background: #e05030; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── DROPDOWNS ──────────────────────── */
+    .dropdown {
+      position: fixed;
+      z-index: 100;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+      min-width: 180px;
+      display: none;
+      flex-direction: column;
+    }
+
+    .dropdown.open { display: flex; }
+
+    .dropdown-item {
+      padding: 0.7rem 1rem;
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 1px solid var(--line);
+      transition: color 0.15s, background 0.15s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-decoration: none;
+    }
+
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item:hover { color: var(--ink); background: rgba(255,255,255,0.03); }
+    .dropdown-item.active { color: var(--blue); }
+    .dropdown-item .check { color: var(--blue); font-size: 0.8rem; }
+
+    .dropdown-header {
+      padding: 0.5rem 1rem 0.4rem;
+      font-size: 0.55rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      opacity: 0.6;
+      border-bottom: 1px solid var(--line);
+    }
+
+    /* target dropdown — bottom-left */
+    #dd-target { bottom: 2.5rem; left: 0; }
+
+    /* session dropdown — bottom-right */
+    #dd-session { bottom: 2.5rem; right: 0; }
+
+    /* ── CONSOLE ────────────────────────── */
+    #console-wrap {
+      position: fixed;
+      bottom: 2.4rem;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(600px, 80vw);
+      max-height: 160px;
+      overflow-y: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+      display: none;
+      flex-direction: column-reverse;
+      z-index: 40;
+    }
+
+    #console-wrap.visible { display: flex; }
+
+    .log-line {
+      padding: 0.3rem 0.9rem;
+      font-size: 0.65rem;
+      line-height: 1.6;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+
+    .log-line:first-child { border-top: none; }
+    .log-line.ok  { color: var(--green); }
+    .log-line.err { color: #e06050; }
+    .log-line.info { color: var(--ink); }
+
+    /* ── EVAL FLASH ─────────────────────── */
+    #flash {
+      position: fixed;
+      inset: 0;
+      background: rgba(13,25,180,0.05);
+      pointer-events: none;
+      opacity: 0;
+      z-index: 200;
+      transition: opacity 0.08s;
+    }
+
+    #flash.active { opacity: 1; }
+
+    /* ── STRUDEL hidden iframe ──────────── */
+    /* Strudel needs an AudioContext — we drive it via its JS API */
+    #strudel-container {
+      display: none;
+    }
+
+    /* ── HINTS (fade out) ───────────────── */
+    #hints {
+      position: fixed;
+      bottom: 2.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      opacity: 1;
+      transition: opacity 1s;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 30;
+    }
+
+    #hints.hide { opacity: 0; }
+  </style>
+</head>
+<body>
+
+  <!-- TOP-LEFT: back -->
+  <div class="corner corner-tl">
+    <a href="index.html" class="back-link">← maiasullivan.com</a>
+  </div>
+
+  <!-- TOP-CENTER: brand -->
+  <div class="corner corner-tc">
+    <span class="brand">mok</span>
+  </div>
+
+  <!-- TOP-RIGHT: target switcher button -->
+  <div class="corner corner-tr">
+    <button class="corner-btn" id="btn-target" onclick="toggleDD('dd-target', 'btn-target', 'bl')">
+      <span id="target-label">strudel</span> ▾
+    </button>
+  </div>
+
+  <!-- BOTTOM-LEFT: status + console toggle -->
+  <div class="corner corner-bl">
+    <span class="status-dot" id="status-dot"></span>
+    <button class="corner-btn" id="btn-console" onclick="toggleConsole()">log</button>
+  </div>
+
+  <!-- BOTTOM-RIGHT: session menu -->
+  <div class="corner corner-br">
+    <button class="corner-btn" onclick="toggleDD('dd-session', 'btn-session', 'br')" id="btn-session">session ▾</button>
+  </div>
+
+  <!-- EDITOR -->
+  <div id="editor-wrap">
+    <textarea id="code" spellcheck="false">-- mok
+-- target: strudel (runs in browser — no setup needed)
+-- ctrl+enter to eval  ·  ctrl+. to silence
+
+note("c3 eb3 g3 bb3")
+  .slow(2)
+  .s("piano")
+</textarea>
+  </div>
+
+  <!-- DROPDOWNS -->
+  <div class="dropdown" id="dd-target">
+    <div class="dropdown-header">target</div>
+    <div class="dropdown-item active" data-target="strudel" onclick="setTarget('strudel', this)">
+      strudel <span class="check">✓</span>
+    </div>
+    <div class="dropdown-item" data-target="tidal" onclick="setTarget('tidal', this)">
+      TidalCycles
+    </div>
+    <div class="dropdown-item" data-target="hydra" onclick="setTarget('hydra', this)">
+      Hydra
+    </div>
+  </div>
+
+  <div class="dropdown" id="dd-session">
+    <div class="dropdown-header">session</div>
+    <div class="dropdown-item" onclick="newSession()">new session</div>
+    <div class="dropdown-item" onclick="copyLink()">copy session link</div>
+    <div class="dropdown-item" id="collab-note" style="opacity:0.4;cursor:default;font-size:0.58rem;">
+      collab: coming soon
+    </div>
+  </div>
+
+  <!-- CONSOLE -->
+  <div id="console-wrap"></div>
+
+  <!-- HINTS -->
+  <div id="hints">ctrl+enter · eval &nbsp;&nbsp; ctrl+. · silence</div>
+
+  <!-- FLASH -->
+  <div id="flash"></div>
+
+  <!-- Hidden Strudel container -->
+  <div id="strudel-container"></div>
+
+  <script>
+    // ── STATE ────────────────────────────
+    let currentTarget = 'strudel';
+    let strudelRepl = null;
+    let consoleVisible = false;
+    let strudelReady = false;
+
+    // ── STRUDEL SETUP ────────────────────
+    // Strudel's repl API: we create a hidden repl element and drive it
+    function initStrudel() {
+      const container = document.getElementById('strudel-container');
+      // strudel-repl custom element (from the imported script)
+      if (customElements.get('strudel-repl')) {
+        strudelRepl = document.createElement('strudel-repl');
+        strudelRepl.setAttribute('hideHeader', '');
+        strudelRepl.setAttribute('hideFooter', '');
+        container.appendChild(strudelRepl);
+        strudelReady = true;
+        log('strudel loaded · ctrl+enter to play', 'info');
+      } else {
+        // fallback: wait for custom element to register
+        customElements.whenDefined('strudel-repl').then(() => {
+          initStrudel();
+        }).catch(() => {
+          log('strudel unavailable — check connection', 'err');
+        });
+      }
+    }
+
+    // Wait for scripts to load
+    window.addEventListener('load', () => {
+      setTimeout(initStrudel, 500);
+    });
+
+    // ── EVAL ─────────────────────────────
+    async function doEval() {
+      const code = getEvalCode();
+      doFlash();
+
+      if (currentTarget === 'strudel') {
+        await evalStrudel(code);
+      } else if (currentTarget === 'hydra') {
+        evalHydra(code);
+      } else {
+        log(`tidal: code sent (needs local relay) — see readme`, 'info');
+        log(code.split('\n')[0], 'ok');
+      }
+    }
+
+    async function evalStrudel(code) {
+      if (!strudelReady || !strudelRepl) {
+        log('strudel not ready yet — wait a moment', 'err');
+        return;
+      }
+      try {
+        // Set code in the hidden repl and trigger eval
+        strudelRepl.setAttribute('code', code);
+        // Strudel repl exposes evaluate() method
+        if (typeof strudelRepl.evaluate === 'function') {
+          await strudelRepl.evaluate(code);
+          setStatus('playing');
+          log(`eval → strudel`, 'ok');
+        } else {
+          // Fallback: use the repl's internal scheduler via postMessage-style
+          strudelRepl.dispatchEvent(new CustomEvent('eval', { detail: { code } }));
+          setStatus('playing');
+          log(`eval → strudel`, 'ok');
+        }
+      } catch(e) {
+        setStatus('error');
+        log(`error: ${e.message}`, 'err');
+      }
+    }
+
+    // Hydra — inject into an iframe
+    let hydraFrame = null;
+    function evalHydra(code) {
+      if (!hydraFrame) {
+        hydraFrame = document.createElement('iframe');
+        hydraFrame.src = 'https://hydra.ojack.xyz/api/';
+        hydraFrame.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:1;border:none;';
+        hydraFrame.id = 'hydra-frame';
+        document.body.insertBefore(hydraFrame, document.body.firstChild);
+        hydraFrame.onload = () => {
+          setTimeout(() => sendHydraCode(code), 1000);
+        };
+        log('hydra loading...', 'info');
+      } else {
+        sendHydraCode(code);
+      }
+    }
+
+    function sendHydraCode(code) {
+      if (hydraFrame) {
+        hydraFrame.contentWindow.postMessage({ type: 'eval', code }, '*');
+        setStatus('playing');
+        log('eval → hydra', 'ok');
+      }
+    }
+
+    function doSilence() {
+      if (currentTarget === 'strudel' && strudelRepl) {
+        try {
+          if (typeof strudelRepl.stop === 'function') strudelRepl.stop();
+          else strudelRepl.dispatchEvent(new CustomEvent('stop'));
+        } catch(e) {}
+      }
+      if (hydraFrame) {
+        sendHydraCode('solid(0,0,0).out()');
+      }
+      setStatus('idle');
+      log('silence', 'err');
+    }
+
+    function getEvalCode() {
+      const ta = document.getElementById('code');
+      const sel = ta.value.substring(ta.selectionStart, ta.selectionEnd).trim();
+      return sel || ta.value;
+    }
+
+    // ── STATUS ───────────────────────────
+    function setStatus(state) {
+      const dot = document.getElementById('status-dot');
+      dot.className = 'status-dot' + (state !== 'idle' ? ' ' + state : '');
+    }
+
+    // ── FLASH ────────────────────────────
+    function doFlash() {
+      const f = document.getElementById('flash');
+      f.classList.add('active');
+      setTimeout(() => f.classList.remove('active'), 150);
+    }
+
+    // ── CONSOLE ──────────────────────────
+    function log(msg, type = '') {
+      const wrap = document.getElementById('console-wrap');
+      const line = document.createElement('div');
+      line.className = 'log-line' + (type ? ' ' + type : '');
+      const now = new Date();
+      const ts = [now.getHours(), now.getMinutes(), now.getSeconds()]
+        .map(n => String(n).padStart(2,'0')).join(':');
+      line.textContent = `[${ts}] ${msg}`;
+      wrap.prepend(line);
+      // auto-show console on errors
+      if (type === 'err' || type === 'info') showConsole();
+    }
+
+    function toggleConsole() {
+      consoleVisible = !consoleVisible;
+      document.getElementById('console-wrap').classList.toggle('visible', consoleVisible);
+      document.getElementById('hints').classList.add('hide');
+    }
+
+    function showConsole() {
+      consoleVisible = true;
+      document.getElementById('console-wrap').classList.add('visible');
+    }
+
+    // ── TARGET ───────────────────────────
+    function setTarget(target, el) {
+      currentTarget = target;
+      document.getElementById('target-label').textContent = target;
+
+      // update checkmarks
+      document.querySelectorAll('#dd-target .dropdown-item').forEach(i => {
+        i.classList.remove('active');
+        const c = i.querySelector('.check');
+        if (c) c.remove();
+      });
+      el.classList.add('active');
+      el.insertAdjacentHTML('beforeend', '<span class="check">✓</span>');
+
+      // swap starter code
+      const starters = {
+        strudel: `-- strudel (in-browser · no setup needed)
+-- ctrl+enter to play
+
+note("c3 eb3 g3 bb3")
+  .slow(2)
+  .s("piano")`,
+        tidal: `-- TidalCycles
+-- needs: SuperCollider + TidalCycles + flok-eval running locally
+-- see: github.com/munshkr/flok
+
+d1 $ s "bd ~ sd ~"
+
+d2 $ n (slow 2 $ run 8) # s "arpy"
+   # gain 0.8`,
+        hydra: `-- Hydra (in-browser · no setup needed)
+-- ctrl+enter to render
+
+osc(10, 0.1, 1.5)
+  .color(0.05, 0.1, 0.7)
+  .rotate(0.2, 0.01)
+  .out()`
+      };
+
+      document.getElementById('code').value = starters[target] || '';
+
+      // hide hydra frame if switching away
+      if (target !== 'hydra' && hydraFrame) {
+        hydraFrame.style.display = 'none';
+      }
+      if (target === 'hydra' && hydraFrame) {
+        hydraFrame.style.display = 'block';
+      }
+
+      closeAllDD();
+      setStatus('idle');
+      log(`target → ${target}`, 'info');
+    }
+
+    // ── SESSION ──────────────────────────
+    function newSession() {
+      const id = Math.random().toString(36).slice(2, 8);
+      history.pushState({}, '', `?s=${id}`);
+      log(`session: ${id}`, 'info');
+      closeAllDD();
+    }
+
+    function copyLink() {
+      navigator.clipboard.writeText(window.location.href)
+        .then(() => log('link copied', 'ok'))
+        .catch(() => log('copy failed', 'err'));
+      closeAllDD();
+    }
+
+    // ── DROPDOWNS ────────────────────────
+    function toggleDD(id, btnId, corner) {
+      const dd = document.getElementById(id);
+      const isOpen = dd.classList.contains('open');
+      closeAllDD();
+      if (!isOpen) dd.classList.add('open');
+    }
+
+    function closeAllDD() {
+      document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('open'));
+    }
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.dropdown') && !e.target.closest('.corner-btn')) {
+        closeAllDD();
+      }
+    });
+
+    // ── KEYBOARD ─────────────────────────
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        doEval();
+        hideHints();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '.') {
+        e.preventDefault();
+        doSilence();
+      }
+      if (e.key === 'Escape') closeAllDD();
+    });
+
+    document.getElementById('code').addEventListener('keydown', e => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const s = e.target.selectionStart;
+        const end = e.target.selectionEnd;
+        e.target.value = e.target.value.substring(0, s) + '  ' + e.target.value.substring(end);
+        e.target.selectionStart = e.target.selectionEnd = s + 2;
+      }
+    });
+
+    // ── HINTS ────────────────────────────
+    let hintTimer = setTimeout(hideHints, 5000);
+    function hideHints() {
+      document.getElementById('hints').classList.add('hide');
+    }
+
+    // ── SESSION FROM URL ─────────────────
+    const params = new URLSearchParams(location.search);
+    if (params.get('s')) {
+      log(`session: ${params.get('s')}`, 'info');
+    }
+  </script>
+
+</body>
+</html>
