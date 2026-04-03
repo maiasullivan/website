@@ -45,7 +45,7 @@
       height: var(--bar); flex-shrink: 0;
       display: flex; align-items: stretch;
       border-bottom: 1px solid var(--line);
-      background: var(--bg);
+      background: transparent;
       position: relative; z-index: 10;
     }
 
@@ -53,6 +53,7 @@
       display: flex; align-items: center;
       padding: 0 0.9rem;
       border-right: 1px solid var(--line); flex-shrink: 0;
+      background: transparent;
     }
 
     .back-link {
@@ -86,23 +87,25 @@
     .target-btn .caret { opacity: 0.45; font-size: 0.5rem; }
 
     .target-dd {
-      position: absolute; top: var(--bar); left: 0;
+      position: fixed;
       background: #1a1714; border: 1px solid var(--line);
-      z-index: 300; display: none; flex-direction: column;
-      min-width: 120px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      z-index: 9999; display: none; flex-direction: column;
+      min-width: 140px; box-shadow: 0 4px 16px rgba(0,0,0,0.7);
     }
     .target-dd.open { display: flex; }
 
     .topt {
-      padding: 0.5rem 0.85rem;
+      padding: 0.7rem 1rem;
       font-family: 'Space Mono', monospace;
-      font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
+      font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
       color: var(--muted); cursor: pointer;
       border-bottom: 1px solid var(--line);
-      transition: color 0.1s, background 0.1s;
+      transition: color 0.15s, background 0.15s;
+      user-select: none;
+      -webkit-user-select: none;
     }
     .topt:last-child { border-bottom: none; }
-    .topt:hover { color: var(--ink); background: rgba(255,255,255,0.04); }
+    .topt:hover, .topt:active { color: var(--ink); background: rgba(255,255,255,0.07); }
     .topt.active { color: var(--blue); }
 
     .ph-close {
@@ -175,7 +178,7 @@
       justify-content: space-between;
       padding: 0 1rem;
       border-top: 1px solid var(--line);
-      background: var(--bg);
+      background: transparent;
       position: relative; z-index: 10;
     }
 
@@ -238,6 +241,227 @@
     .pi .sc { margin-left: auto; font-size: 0.5rem; opacity: 0.4; }
     .pt { padding: 0.4rem 1rem; font-size: 0.52rem; color: var(--muted); opacity: 0.4; border-top: 1px solid var(--line); }
 
+
+
+    /* Hide strudel-editor's own UI (sliders, buttons etc) — we drive it headlessly */
+    strudel-editor {
+      position: absolute !important;
+      width: 1px !important; height: 1px !important;
+      overflow: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      z-index: -1 !important;
+      /* Also suppress any overflow panels it might render outside its box */
+      clip: rect(0,0,0,0) !important;
+      clip-path: inset(50%) !important;
+    }
+    /* Catch any portaled/fixed controls the component might inject */
+    .strudel-controls,
+    .strudel-slider,
+    [data-strudel-controls] {
+      display: none !important;
+    }
+
+
+    /* ── SLIDER BAR ──────────────────────────────── */
+    #slider-panel {
+      position: fixed;
+      bottom: var(--bar);
+      left: 0; right: 0;
+      background: rgba(14,12,10,0.88);
+      border-top: 1px solid var(--line);
+      z-index: 50;
+      display: none;
+      flex-direction: row;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0;
+      min-height: 2.6rem;
+      backdrop-filter: blur(4px);
+    }
+    #slider-panel.vis { display: flex; }
+
+    .sl-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0 1rem;
+      height: 2.6rem;
+      border-right: 1px solid var(--line);
+      min-width: 160px;
+      flex: 0 0 auto;
+    }
+
+    .sl-name {
+      font-size: 0.58rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--blue);
+      font-family: 'Space Mono', monospace;
+      white-space: nowrap; flex-shrink: 0;
+      min-width: 1.5rem;
+    }
+
+    .sl-range {
+      -webkit-appearance: none;
+      width: 90px; height: 3px;
+      background: var(--line);
+      outline: none; cursor: pointer;
+      border-radius: 0; flex-shrink: 0;
+    }
+    .sl-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 11px; height: 11px;
+      background: var(--blue); border-radius: 50%;
+      cursor: pointer;
+    }
+    .sl-range::-moz-range-thumb {
+      width: 11px; height: 11px;
+      background: var(--blue); border-radius: 50%;
+      border: none; cursor: pointer;
+    }
+
+    .sl-value-display {
+      font-size: 0.6rem; color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      min-width: 3.2rem; text-align: right;
+      flex-shrink: 0;
+    }
+
+    .sl-remove {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 0.6rem;
+      padding: 0; opacity: 0;
+      transition: opacity 0.15s, color 0.15s; line-height: 1;
+      flex-shrink: 0;
+    }
+    .sl-item:hover .sl-remove { opacity: 0.5; }
+    .sl-remove:hover { opacity: 1 !important; color: var(--ink); }
+
+    #slider-panel-close {
+      margin-left: auto;
+      padding: 0 0.75rem;
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 0.65rem;
+      transition: color 0.15s; flex-shrink: 0;
+      align-self: stretch;
+      display: flex; align-items: center;
+    }
+    #slider-panel-close:hover { color: var(--ink); }
+
+    #slider-empty {
+      padding: 0 1rem;
+      font-size: 0.62rem; color: var(--muted);
+      font-style: italic;
+    }
+
+    /* ── PREBAKE MODAL ──────────────────────────── */
+    #pb-overlay {
+      position: fixed; inset: 0; z-index: 600;
+      background: rgba(14,12,10,0.7);
+      backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center;
+    }
+    #pb-overlay.open { display: flex; }
+
+    #pb-modal {
+      background: #131210; border: 1px solid var(--line);
+      width: min(600px, 92vw);
+      display: flex; flex-direction: column;
+      max-height: 80vh;
+    }
+
+    #pb-modal-head {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    #pb-modal-head h2 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 1rem; font-weight: 400; font-style: italic;
+      color: var(--blue);
+    }
+
+    .pb-close-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 1rem; line-height: 1;
+      transition: color 0.15s;
+    }
+    .pb-close-btn:hover { color: var(--ink); }
+
+    .pb-tabs {
+      display: flex; border-bottom: 1px solid var(--line);
+    }
+
+    .pb-tab {
+      padding: 0.6rem 1rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--muted); cursor: pointer;
+      border-right: 1px solid var(--line);
+      position: relative; transition: color 0.15s;
+    }
+    .pb-tab.active { color: var(--ink); }
+    .pb-tab.active::after {
+      content: ''; position: absolute;
+      bottom: -1px; left: 0; right: 0; height: 2px;
+      background: var(--blue);
+    }
+
+    .pb-section {
+      padding: 1rem;
+      border-bottom: 1px solid var(--line);
+      display: flex; flex-direction: column; gap: 0.6rem;
+    }
+
+    .pb-label {
+      font-size: 0.58rem; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--muted);
+    }
+
+    .pb-url-row {
+      display: flex; gap: 0.5rem;
+    }
+
+.pb-btn {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.45rem 0.9rem; cursor: pointer; border: 1px solid;
+      transition: background 0.15s, color 0.15s; white-space: nowrap;
+    }
+    .pb-btn-primary { background: var(--blue); border-color: var(--blue); color: var(--ink); }
+    .pb-btn-primary:hover { background: transparent; color: var(--blue); }
+    .pb-btn-ghost { background: transparent; border-color: var(--muted); color: var(--muted); }
+    .pb-btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+
+    .pb-textarea {
+      width: 100%; min-height: 180px; max-height: 260px;
+      background: #0a0908; border: 1px solid var(--line);
+      color: var(--ink); font-family: 'Space Mono', monospace;
+      font-size: 0.75rem; line-height: 1.65;
+      padding: 0.7rem; resize: vertical; outline: none;
+      tab-size: 2; transition: border-color 0.15s;
+    }
+    .pb-textarea:focus { border-color: var(--blue); }
+    .pb-textarea::placeholder { color: var(--muted); }
+
+    .pb-status {
+      font-size: 0.6rem; letter-spacing: 0.08em;
+      color: var(--muted); min-height: 1rem;
+    }
+    .pb-status.ok  { color: var(--green); }
+    .pb-status.err { color: #e06050; }
+
+    .pb-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.75rem 1rem; gap: 0.75rem;
+    }
+
+    .pb-active-pill {
+      font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--green); display: none;
+    }
+    .pb-active-pill.visible { display: block; }
+
     /* Flash */
     #flash { position: fixed; inset: 0; background: rgba(13,25,180,0.05); pointer-events: none; opacity: 0; z-index: 300; transition: opacity 0.07s; }
     #flash.on { opacity: 1; }
@@ -273,6 +497,73 @@
   </div>
 </div>
 
+
+
+<!-- Slider Panel -->
+<div id="slider-panel">
+  <div id="slider-panel-head">
+    <span>sliders</span>
+    <div style="display:flex;gap:1rem;align-items:center">
+<button class="sl-panel-close" onclick="toggleSliders()">✕</button>
+    </div>
+  </div>
+  <div id="slider-list">
+    <div id="slider-empty">write <span style="color:var(--blue);font-family:'Space Mono',monospace">slider('name')</span> in your code and eval to create a slider</div>
+  </div>
+</div>
+
+<div id="slider-panel"><div id="slider-empty" style="padding:0 1rem;font-size:0.62rem;color:var(--muted);font-style:italic">write <span style="color:var(--blue);font-family:'Space Mono',monospace">slider('name')</span> in your code and ctrl+enter</div><button id="slider-panel-close" onclick="toggleSliders()">✕</button></div>
+
+<!-- Prebake Modal -->
+<div id="pb-overlay" onclick="pbOverlayClick(event)">
+  <div id="pb-modal">
+    <div id="pb-modal-head">
+      <h2>prebake</h2>
+      <button class="pb-close-btn" onclick="closePbModal()">✕</button>
+    </div>
+
+    <!-- target tabs -->
+    <div class="pb-tabs">
+      <div class="pb-tab active" data-pb="strudel" onclick="switchPbTab('strudel', this)">strudel</div>
+      <div class="pb-tab" data-pb="hydra" onclick="switchPbTab('hydra', this)">hydra</div>
+    </div>
+
+    <!-- File upload -->
+    <div class="pb-section">
+      <span class="pb-label">load from file</span>
+      <div class="pb-url-row">
+        <label class="pb-btn pb-btn-primary" style="cursor:pointer;display:flex;align-items:center;gap:0.4rem">
+          ↑ choose file
+          <input id="pb-file" type="file" accept=".strudel,.js,.txt" style="display:none"
+                 onchange="loadPbFromFile(this)" />
+        </label>
+        <span class="pb-status" id="pb-url-status" style="display:flex;align-items:center;padding:0 0.5rem"></span>
+      </div>
+    </div>
+
+    <!-- Code editor -->
+    <div class="pb-section">
+      <span class="pb-label">or paste / edit directly</span>
+      <textarea id="pb-code" class="pb-textarea"
+                placeholder="// custom functions, samples, registers…
+// e.g. for strudel:
+samples('github:tidalcycles/Dirt-Samples/master/')
+register('env', (x, pat) => pat.attack(x).decay(x).sustain(0.5))
+
+// e.g. for hydra:
+// bpm = 120"></textarea>
+    </div>
+
+    <div class="pb-footer">
+      <span class="pb-active-pill" id="pb-active-pill">● prebake active</span>
+      <div style="display:flex;gap:0.5rem;margin-left:auto">
+        <button class="pb-btn pb-btn-ghost" onclick="clearPrebake()">clear</button>
+        <button class="pb-btn pb-btn-primary" onclick="applyPrebake()">apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="log"></div>
 <div id="flash"></div>
 
@@ -280,9 +571,13 @@
   // ── STATE ──────────────────────────────
   let panes = [], paneCount = 0, logVis = false;
   let hydraInstance = null; // single Hydra instance, shared
+  let strudelPrebake = '';   // prebake code run before each strudel eval
+  const sliders = {};           // { name: { value, min, max, step } }
+  let slidersVisible = false;
+  let hydraPrebake   = '';   // prebake code prepended to each hydra eval
 
   const STARTERS = {
-    strudel: 'setcpm(30)\nnote("c3 eb3 g3 bb3")\n  .s("piano")',
+    strudel: `// strudel — ctrl+enter to play`,
     hydra:   'osc(10, 0.1, 1.5)\n  .color(0.05, 0.1, 0.7)\n  .rotate([0.2,0.4], 0.01)\n  .out()',
     tidal:   '-- needs local SuperCollider + flok-eval\nd1 $ s "bd ~ sd ~"\n\nd2 $ n (slow 2 $ run 8) # s "arpy"\n   # gain 0.8'
   };
@@ -340,7 +635,9 @@
       o.className = 'topt' + (t === target ? ' active' : '');
       o.textContent = t === 'tidal' ? 'TidalCycles' : t;
       o.dataset.t = t;
-      o.onclick = e => { e.stopPropagation(); setPaneTarget(id, t); };
+      o.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
+      o.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); setPaneTarget(id, t); });
+      o.addEventListener('touchend', e => { e.preventDefault(); e.stopPropagation(); setPaneTarget(id, t); });
       dd.appendChild(o);
     });
 
@@ -348,7 +645,8 @@
     closeBtn.className = 'ph-close'; closeBtn.textContent = '✕';
     closeBtn.onclick = () => removePane(id);
 
-    ph.appendChild(tBtn); ph.appendChild(dd); ph.appendChild(closeBtn);
+    ph.appendChild(tBtn); ph.appendChild(closeBtn);
+    document.body.appendChild(dd); // fixed overlay, not inside topbar stacking context
     document.getElementById('pane-headers').appendChild(ph);
 
     // Editor pane
@@ -430,27 +728,157 @@
   }
 
   // ── EVAL ───────────────────────────────
+
+  // ── SLIDER PREPROCESSING ─────────────────────────────────────────────
+  // Parse slider() calls from code, create widgets, substitute current values.
+  // Works for ALL targets since substitution happens before any eval.
+  // Patterns matched:
+  //   slider()
+  //   slider(0.5)
+  //   slider('name')
+  //   slider('name', 0.5)
+  //   slider('name', 0.5, 0, 1)
+  //   slider('name', 0.5, 0, 1, 0.01)
+
+  function preprocessSliders(code) {
+    let autoIdx = 0;
+
+    // Match slider( ... ) — handle nested parens carefully with a simple greedy match
+    // Since slider args are just numbers/strings, this regex is sufficient
+    const re = /slider\(([^)]*)\)/g;
+
+    return code.replace(re, (match, argsStr) => {
+      // Parse args
+      const args = parseSliderArgs(argsStr.trim());
+
+      let name, def, min, max, step;
+
+      if (args.length === 0) {
+        // slider()
+        name = null; def = 0.5;
+      } else if (typeof args[0] === 'string') {
+        // slider('name', ...)
+        name = args[0];
+        def  = args[1] !== undefined ? args[1] : 0.5;
+        min  = args[2]; max = args[3]; step = args[4];
+      } else {
+        // slider(0.5, ...)
+        name = null;
+        def  = args[0] !== undefined ? args[0] : 0.5;
+        min  = args[1]; max = args[2]; step = args[3];
+      }
+
+      // Auto-name
+      if (!name) name = 's' + (++autoIdx);
+
+      // Smart defaults
+      const smart = smartSliderRange(def);
+      const rMin  = min  !== undefined ? min  : smart.mn;
+      const rMax  = max  !== undefined ? max  : smart.mx;
+      const rStep = step !== undefined ? step : smart.st;
+
+      // Create or update slider widget
+      if (!sliders[name]) {
+        sliders[name] = { value: def, min: rMin, max: rMax, step: rStep };
+        needSliderRender = true;
+        if (!slidersVisible) { toggleSliders(); }
+      } else {
+        sliders[name].min  = rMin;
+        sliders[name].max  = rMax;
+        sliders[name].step = rStep;
+        sliders[name].value = Math.min(rMax, Math.max(rMin, sliders[name].value));
+        renderSliderItem(name);
+      }
+
+      // Return the current value as a number literal
+      return String(sliders[name].value);
+    });
+  }
+
+  let needSliderRender = false;
+
+  function smartSliderRange(val) {
+    if (val === 0) return { mn: -1, mx: 1, st: 0.01 };
+    if (val > 0) {
+      const order = Math.pow(10, Math.floor(Math.log10(Math.abs(val))));
+      return { mn: 0, mx: val * 4, st: Math.max(order / 100, 0.001) };
+    }
+    const order = Math.pow(10, Math.floor(Math.log10(Math.abs(val))));
+    return { mn: val * 4, mx: 0, st: Math.max(order / 100, 0.001) };
+  }
+
+  function parseSliderArgs(str) {
+    if (!str) return [];
+    const args = [];
+    // Split by comma but respect string quotes
+    let current = '', inStr = false, strChar = '';
+    for (let i = 0; i < str.length; i++) {
+      const c = str[i];
+      if (inStr) {
+        if (c === strChar) inStr = false;
+        else current += c;
+      } else if (c === '"' || c === "'") {
+        inStr = true; strChar = c;
+      } else if (c === ',') {
+        args.push(coerceArg(current.trim()));
+        current = '';
+      } else {
+        current += c;
+      }
+    }
+    if (current.trim()) args.push(coerceArg(current.trim()));
+    return args;
+  }
+
+  function coerceArg(s) {
+    if (!s) return undefined;
+    const n = parseFloat(s);
+    return isNaN(n) ? s : n; // string or number
+  }
+
+
   async function evalPane(id) {
     const p = panes.find(p => p.id === id);
     if (!p) return;
     doFlash();
     const raw = getCode(p.editor);
-    const code = raw.split('\n').filter(l => !l.trim().startsWith('--')).join('\n').trim();
-    if (!code) return;
+    if (!raw.trim()) return;
 
-    if (p.target === 'strudel') await evalStrudel(p, code);
-    else if (p.target === 'hydra') evalHydra(code);
-    else log('TidalCycles: needs local SuperCollider + flok-eval', 'info');
+    // Preprocess slider() calls — substitutes values and creates widgets
+    needSliderRender = false;
+    const processed = preprocessSliders(raw);
+    if (needSliderRender) renderSliders();
+
+    if (p.target === 'strudel') {
+      const fullCode = strudelPrebake ? strudelPrebake + '\n' + processed : processed;
+      await evalStrudel(p, fullCode);
+    } else if (p.target === 'hydra') {
+      const stripped = processed.split('\n').filter(l => !l.trim().startsWith('--')).join('\n').trim();
+      const code = hydraPrebake ? hydraPrebake + '\n' + stripped : stripped;
+      evalHydra(code);
+    } else {
+      log('TidalCycles: needs local SuperCollider + flok-eval relay', 'info');
+    }
   }
 
   async function evalStrudel(p, code) {
     if (!p.strudelReady || !p.strudelEl) { log('strudel loading…', 'err'); return; }
     try {
+      // strudel-editor handles its own transpilation (d1/d2/$, mini-notation, etc.)
+      // Code arrives already processed (prebake prepended, slider() substituted)
       p.strudelEl.setAttribute('code', code);
-      await (p.strudelEl.updateComplete?.catch(() => {}));
-      const inst = p.strudelEl.editor || p.strudelEl;
-      if (typeof inst.evaluate === 'function') await inst.evaluate(code);
-      else if (typeof p.strudelEl.evaluate === 'function') await p.strudelEl.evaluate(code);
+      // Wait for lit element to process attribute
+      if (p.strudelEl.updateComplete) await p.strudelEl.updateComplete.catch(() => {});
+      // Try all known evaluate paths
+      let evaluated = false;
+      if (typeof p.strudelEl.evaluate === 'function') {
+        await p.strudelEl.evaluate(code); evaluated = true;
+      } else if (p.strudelEl.editor && typeof p.strudelEl.editor.evaluate === 'function') {
+        await p.strudelEl.editor.evaluate(code); evaluated = true;
+      } else if (p.strudelEl.repl && typeof p.strudelEl.repl.evaluate === 'function') {
+        await p.strudelEl.repl.evaluate(code); evaluated = true;
+      }
+      if (!evaluated) log('strudel: evaluate() not found — try clicking play in the editor', 'info');
       setStatus('playing'); log('eval → strudel', 'ok');
     } catch(e) { setStatus('error'); log('strudel: ' + e.message, 'err'); }
   }
@@ -482,14 +910,21 @@
     const dd = document.getElementById(`dd-${id}`);
     const was = dd.classList.contains('open');
     closeAllDD();
-    if (!was) dd.classList.add('open');
+    if (!was) {
+      // Position fixed dropdown below the button
+      const btn = document.querySelector(`#ph-${id} .target-btn`);
+      const rect = btn.getBoundingClientRect();
+      dd.style.top  = rect.bottom + 'px';
+      dd.style.left = rect.left + 'px';
+      dd.classList.add('open');
+    }
   }
 
   function closeAllDD() {
     document.querySelectorAll('.target-dd').forEach(d => d.classList.remove('open'));
   }
 
-  document.addEventListener('click', closeAllDD);
+  document.addEventListener('click', e => { if (!e.target.closest('.target-dd') && !e.target.closest('.target-btn')) setTimeout(closeAllDD, 50); });
 
   function setStatus(s) {
     document.getElementById('sdot').className = 'sdot' + (s !== 'idle' ? ' ' + s : '');
@@ -533,12 +968,164 @@
     logVis = !logVis; document.getElementById('log').classList.toggle('vis', logVis);
   }
 
+
+
+  // ── SLIDERS ────────────────────────────────────────────────────────
+  // window.__mokSlider is the global slider() function injected into every eval.
+  // Usage: slider('name', defaultVal, min, max, step)
+  // First call creates the slider widget and returns defaultVal.
+  // Subsequent evals return the current dragged value.
+
+  let _sliderAutoIdx = 0; // auto-increment for unnamed sliders
+
+
+  function toggleSliders() {
+    slidersVisible = !slidersVisible;
+    document.getElementById('slider-panel').classList.toggle('vis', slidersVisible);
+  }
+
+  function removeSlider(name) {
+    delete sliders[name];
+    renderSliders();
+  }
+
+  function renderSliderItem(name) {
+    const item = document.querySelector(`.sl-item[data-name="${name}"]`);
+    if (!item) return;
+    const s = sliders[name];
+    const range = item.querySelector('.sl-range');
+    if (range) { range.min = s.min; range.max = s.max; range.step = s.step; range.value = s.value; }
+    const disp = item.querySelector('.sl-value-display');
+    if (disp) disp.textContent = formatVal(s.value);
+  }
+
+  function renderSliders() {
+    const panel = document.getElementById('slider-panel');
+    const empty = document.getElementById('slider-empty');
+    const close = document.getElementById('slider-panel-close');
+    const names = Object.keys(sliders);
+
+    // Remove existing sl-items
+    panel.querySelectorAll('.sl-item').forEach(el => el.remove());
+
+    empty.style.display = names.length ? 'none' : 'block';
+
+    // Insert items before the close button
+    names.forEach(name => {
+      const s = sliders[name];
+      const item = document.createElement('div');
+      item.className = 'sl-item';
+      item.dataset.name = name;
+      item.innerHTML =
+        `<span class="sl-name">${name}</span>` +
+        `<input class="sl-range" type="range" min="${s.min}" max="${s.max}" step="${s.step}" value="${s.value}" oninput="updateSlider('${name}', parseFloat(this.value))">` +
+        `<span class="sl-value-display">${formatVal(s.value)}</span>` +
+        `<button class="sl-remove" onclick="removeSlider('${name}')">✕</button>`;
+      panel.insertBefore(item, close);
+    });
+  }
+
+  function formatVal(v) {
+    // Show up to 4 sig figs without trailing zeros
+    if (Number.isInteger(v)) return String(v);
+    return parseFloat(v.toPrecision(4)).toString();
+  }
+
+  function updateSlider(name, value) {
+    if (!sliders[name]) return;
+    sliders[name].value = value;
+    const item = document.querySelector(`.sl-item[data-name="${name}"]`);
+    if (item) item.querySelector('.sl-value-display').textContent = formatVal(value);
+    // Re-eval active pane so slider change is heard immediately
+    const p = panes.find(p => p.editor === document.activeElement) || panes[0];
+    if (p) evalPane(p.id);
+  }
+
+  // ── PREBAKE ────────────────────────────────────────────────────────
+  let currentPbTarget = 'strudel';
+
+  function openPbModal() {
+    const target = activePane()?.target || 'strudel';
+    switchPbTab(target === 'hydra' ? 'hydra' : 'strudel', null);
+    const code = target === 'hydra' ? hydraPrebake : strudelPrebake;
+    document.getElementById('pb-code').value = code;
+    updatePbActivePill();
+    document.getElementById('pb-overlay').classList.add('open');
+  }
+
+  function closePbModal() {
+    document.getElementById('pb-overlay').classList.remove('open');
+  }
+
+  function pbOverlayClick(e) {
+    if (e.target === document.getElementById('pb-overlay')) closePbModal();
+  }
+
+  function switchPbTab(target, el) {
+    currentPbTarget = target;
+    document.querySelectorAll('.pb-tab').forEach(t => t.classList.remove('active'));
+    (el || document.querySelector(`.pb-tab[data-pb="${target}"]`))?.classList.add('active');
+    const code = target === 'hydra' ? hydraPrebake : strudelPrebake;
+    document.getElementById('pb-code').value = code;
+    document.getElementById('pb-url-status').textContent = '';
+    updatePbActivePill();
+  }
+
+  function loadPbFromFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const status = document.getElementById('pb-url-status');
+    status.className = 'pb-status';
+    status.textContent = 'reading…';
+    const reader = new FileReader();
+    reader.onload = e => {
+      const text = e.target.result;
+      document.getElementById('pb-code').value = text;
+      status.className = 'pb-status ok';
+      status.textContent = `✓ ${file.name} (${text.split('\n').length} lines)`;
+    };
+    reader.onerror = () => {
+      status.className = 'pb-status err';
+      status.textContent = 'error reading file';
+    };
+    reader.readAsText(file);
+  }
+
+  function applyPrebake() {
+    const code = document.getElementById('pb-code').value.trim();
+    if (currentPbTarget === 'hydra') {
+      hydraPrebake = code;
+    } else {
+      strudelPrebake = code;
+    }
+    updatePbActivePill();
+    log(`prebake applied (${currentPbTarget}, ${code.split('\n').length} lines)`, 'ok');
+    closePbModal();
+  }
+
+  function clearPrebake() {
+    document.getElementById('pb-code').value = '';
+    document.getElementById('pb-url-status').textContent = '';
+    if (currentPbTarget === 'hydra') hydraPrebake = '';
+    else strudelPrebake = '';
+    updatePbActivePill();
+    log(`prebake cleared (${currentPbTarget})`, 'info');
+  }
+
+  function updatePbActivePill() {
+    const active = currentPbTarget === 'hydra' ? hydraPrebake : strudelPrebake;
+    document.getElementById('pb-active-pill').classList.toggle('visible', active.length > 0);
+  }
+
   // ── PALETTE ────────────────────────────
   const CMDS = [
     { sec:'Panes',    ico:'+', label:'Add Strudel pane',     action:() => { addPane('strudel');  closePal(); } },
     { sec:'Panes',    ico:'+', label:'Add Hydra pane',       action:() => { addPane('hydra');    closePal(); } },
     { sec:'Panes',    ico:'+', label:'Add TidalCycles pane', action:() => { addPane('tidal');    closePal(); } },
     { sec:'Panes',    ico:'✕', label:'Remove active pane',   action:() => { const p = activePane(); if (p) removePane(p.id); closePal(); } },
+    { sec:'Sliders',  ico:'⧖', label:'Toggle slider panel', action:() => { toggleSliders(); closePal(); } },
+    { sec:'Sliders',  ico:'✕', label:'Clear all sliders', action:() => { Object.keys(sliders).forEach(removeSlider); closePal(); } },
+    { sec:'Prebake',  ico:'⚙', label:'Load prebake…', action:() => { openPbModal(); closePal(); } },
     { sec:'Session',  ico:'⎘', label:'Copy session link',    action:() => { navigator.clipboard.writeText(location.href).then(()=>log('link copied','ok')); closePal(); } },
     { sec:'Playback', ico:'■', label:'Silence all', sc:'Ctrl+.', action:() => { silenceAll(); closePal(); } },
   ];
