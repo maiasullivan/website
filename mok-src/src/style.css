@@ -18,8 +18,7 @@ html, body {
 }
 
 /* ── HYDRA CANVAS ──────────────────────────────────────────────────────────────
-   position:fixed — completely outside shell's layout.
-   z-index:0 — shell (z:1) paints on top; transparent hydra pane reveals canvas. */
+   Fixed behind shell (z:0 < shell z:1). Transparent panes let it show through. */
 #hc {
   position: fixed; inset: 0;
   width: 100vw; height: 100vh;
@@ -27,9 +26,7 @@ html, body {
 }
 
 /* ── SHELL ─────────────────────────────────────────────────────────────────────
-   position:fixed always creates a stacking context regardless of z-index.
-   z-index:1 makes shell unambiguously above the canvas (z:0). Transparent
-   areas inside shell (hydra pane) will show the canvas through. */
+   z-index:1 puts shell above canvas. Transparent panes reveal it. */
 #shell {
   position: fixed; inset: 0;
   z-index: 1;
@@ -102,6 +99,7 @@ html, body {
 .topt:last-child { border-bottom: none; }
 .topt:hover, .topt:active { color: var(--ink); background: rgba(255,255,255,0.07); }
 .topt.active { color: var(--blue); }
+
 
 .ph-close {
   background: none; border: none; cursor: pointer;
@@ -362,9 +360,10 @@ strudel-editor {
   background: transparent !important;
 }
 
-/* Hydra pane: ensure CodeMirror's inner elements are also transparent */
-.pane.is-hydra .cm-scroller,
-.pane.is-hydra .cm-gutters {
+/* All panes: ensure CodeMirror internals don't paint an opaque background */
+.cm-scroller,
+.cm-gutters,
+.cm-content {
   background: transparent !important;
 }
 
