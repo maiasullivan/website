@@ -374,32 +374,33 @@ strudel-editor {
 /* ── INLINE SLIDER WIDGETS ─────────────────────────────────────────────────── */
 .cm-slider-wrap {
   display: inline-flex; align-items: center;
-  gap: 0.3rem; vertical-align: middle;
-  margin-left: 0.1rem; user-select: none;
+  gap: 0.4rem; vertical-align: middle;
+  margin-left: 0.25rem; user-select: none;
+  background: rgba(18,16,14,0.82);
+  padding: 0.05rem 0.5rem 0.05rem 0.45rem; border-radius: 3px;
 }
 
 .cm-slider {
   -webkit-appearance: none; appearance: none;
   width: 80px; height: 3px;
-  background: #2a2622; outline: none;
+  background: rgba(255,255,255,0.18); outline: none;
   cursor: pointer; vertical-align: middle;
-  border-radius: 0; flex-shrink: 0;
+  border-radius: 2px; flex-shrink: 0;
 }
 .cm-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 12px; height: 12px;
-  background: rgb(13,25,180); border-radius: 50%; cursor: pointer;
-  transition: background 0.15s;
+  background: #fff; border-radius: 50%; cursor: pointer;
 }
-.cm-slider::-webkit-slider-thumb:hover { background: #f0ebe0; }
+.cm-slider::-webkit-slider-thumb:hover { background: #fff; transform: scale(1.15); }
 .cm-slider::-moz-range-thumb {
   width: 12px; height: 12px;
-  background: rgb(13,25,180); border-radius: 50%;
+  background: #fff; border-radius: 50%;
   border: none; cursor: pointer;
 }
 
 .cm-slider-val {
-  font-size: 0.72em; color: #5a5550;
+  font-size: 0.68em; color: rgba(240,235,224,0.5);
   font-family: 'Space Mono', monospace;
-  min-width: 3rem; display: inline-block; user-select: none;
+  min-width: 2.6rem; display: inline-block; user-select: none;
 }

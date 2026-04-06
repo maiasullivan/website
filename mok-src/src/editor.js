@@ -73,13 +73,13 @@ function formatVal(v) {
 export const sliderRegistry = {}  // { name: { value, min, max, step } }
 
 function smartRange(val) {
-  if (val === 0) return { mn: -1, mx: 1, st: 0.01 }
+  if (val === 0) return { mn: -1, mx: 1, st: 0.001 }
   if (val > 0) {
     const order = Math.pow(10, Math.floor(Math.log10(Math.abs(val))))
-    return { mn: 0, mx: val * 4, st: Math.max(order / 100, 0.001) }
+    return { mn: 0, mx: val * 4, st: Math.max(order / 1000, 0.0001) }
   }
   const order = Math.pow(10, Math.floor(Math.log10(Math.abs(val))))
-  return { mn: val * 4, mx: 0, st: Math.max(order / 100, 0.001) }
+  return { mn: val * 4, mx: 0, st: Math.max(order / 1000, 0.0001) }
 }
 
 function parseSliderCall(argsStr) {
@@ -225,34 +225,38 @@ export const mokTheme = EditorView.theme({
   '.cm-slider-wrap': {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '0.3rem',
+    gap: '0.4rem',
     verticalAlign: 'middle',
-    marginLeft: '0.15rem',
+    marginLeft: '0.25rem',
+    background: 'rgba(18,16,14,0.82)',
+    padding: '0.05rem 0.5rem 0.05rem 0.45rem',
+    borderRadius: '3px',
   },
   '.cm-slider': {
     WebkitAppearance: 'none',
     appearance: 'none',
     width: '80px',
     height: '3px',
-    background: '#2a2622',
+    background: 'rgba(255,255,255,0.18)',
     outline: 'none',
     cursor: 'pointer',
     verticalAlign: 'middle',
-    borderRadius: '0',
+    borderRadius: '2px',
+    flexShrink: '0',
   },
   '.cm-slider::-webkit-slider-thumb': {
     WebkitAppearance: 'none',
-    width: '11px',
-    height: '11px',
-    background: 'rgb(13,25,180)',
+    width: '12px',
+    height: '12px',
+    background: '#fff',
     borderRadius: '50%',
     cursor: 'pointer',
   },
   '.cm-slider-val': {
-    fontSize: '0.7em',
-    color: '#5a5550',
+    fontSize: '0.68em',
+    color: 'rgba(240,235,224,0.5)',
     fontFamily: "'Space Mono', monospace",
-    minWidth: '3rem',
+    minWidth: '2.6rem',
   },
   // Syntax highlighting
   '.cm-comment':   { color: '#5a5550', fontStyle: 'italic' },
