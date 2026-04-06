@@ -7,6 +7,7 @@ import {
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { javascript } from '@codemirror/lang-javascript'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
+import { yCollab } from 'y-codemirror.next'
 
 // ── Slider Widget ─────────────────────────────────────────────────────────────
 // Renders an inline <input type="range"> at the position of slider() args
@@ -269,7 +270,7 @@ export const mokTheme = EditorView.theme({
 }, { dark: true })
 
 // ── Create Editor ─────────────────────────────────────────────────────────────
-export function createEditor(parent, initialDoc, extraKeys, onSliderChange) {
+export function createEditor(parent, initialDoc, extraKeys, onSliderChange, ytext, awareness) {
   const extensions = [
     history(),
     keymap.of([...defaultKeymap, ...historyKeymap]),
@@ -285,9 +286,13 @@ export function createEditor(parent, initialDoc, extraKeys, onSliderChange) {
     }),
   ]
 
+  if (ytext && awareness) {
+    extensions.push(yCollab(ytext, awareness))
+  }
+
   return new EditorView({
     state: EditorState.create({
-      doc: initialDoc,
+      doc: ytext ? ytext.toString() || initialDoc : initialDoc,
       extensions,
     }),
     parent,

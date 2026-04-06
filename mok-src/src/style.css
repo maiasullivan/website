@@ -193,6 +193,16 @@ html, body {
 .sdot.playing { background: var(--green); }
 .sdot.error   { background: #e05030; }
 
+.collab-peers {
+  font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--green); opacity: 0.7; white-space: nowrap;
+}
+.collab-peers:empty { display: none; }
+
+/* ── Collaborator cursors (yCollab) ──────────────────────────────────────────── */
+.cm-ySelectionInfo { display: none; }  /* hide name tooltip — too noisy */
+.cm-ySelection { opacity: 0.35; }
+
 /* ── LOG ───────────────────────────────────────────────────────────────────── */
 #log {
   position: fixed;
@@ -339,6 +349,66 @@ strudel-editor {
   color: var(--green); display: none;
 }
 .pb-active-pill.visible { display: block; }
+
+/* ── COLLABORATE MODAL ─────────────────────────────────────────────────────── */
+#collab-overlay {
+  position: fixed; inset: 0; z-index: 600;
+  background: rgba(14,12,10,0.7); backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center;
+}
+#collab-overlay.open { display: flex; }
+
+#collab-modal {
+  background: #131210; border: 1px solid var(--line);
+  width: min(520px, 92vw);
+  display: flex; flex-direction: column;
+}
+
+#collab-modal-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.8rem 1rem; border-bottom: 1px solid var(--line);
+}
+#collab-modal-head h2 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 1rem; font-weight: 400; font-style: italic; color: var(--green);
+}
+
+.collab-body { display: flex; flex-direction: column; }
+
+.collab-intro {
+  padding: 1rem; font-size: 0.7rem; line-height: 1.75;
+  color: var(--muted); border-bottom: 1px solid var(--line);
+}
+
+.collab-section {
+  padding: 0.85rem 1rem; border-bottom: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 0.55rem;
+}
+.collab-section:last-child { border-bottom: none; }
+
+.collab-note .pb-label { color: #e06050; opacity: 0.7; }
+
+.collab-link-row {
+  display: flex; align-items: center; gap: 0.6rem;
+}
+
+.collab-link-url {
+  flex: 1; font-family: 'Space Mono', monospace;
+  font-size: 0.62rem; color: var(--green);
+  word-break: break-all; opacity: 0.85;
+}
+
+.collab-list {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 0.3rem;
+}
+.collab-list li {
+  font-size: 0.67rem; color: var(--muted); line-height: 1.6;
+  padding-left: 1rem; position: relative;
+}
+.collab-list li::before {
+  content: '—'; position: absolute; left: 0; opacity: 0.4;
+}
 
 /* ── FLASH ─────────────────────────────────────────────────────────────────── */
 #flash {

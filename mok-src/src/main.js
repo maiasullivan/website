@@ -1,10 +1,46 @@
 // main.js — mok application logic
 import { createEditor, preprocessSliders, sliderRegistry } from './editor.js'
+import * as Y from 'yjs'
+import { WebrtcProvider } from 'y-webrtc'
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let panes = [], paneCount = 0, logVis = false
 let hydraInstance = null
 let lastHydraCode = ''
+
+// ── COLLAB ────────────────────────────────────────────────────────────────────
+let ydoc, provider, awareness
+
+function getRoomId() {
+  const params = new URLSearchParams(location.search)
+  let room = params.get('room')
+  if (!room) {
+    room = Math.random().toString(36).slice(2, 9)
+    const url = new URL(location.href)
+    url.searchParams.set('room', room)
+    history.replaceState(null, '', url)
+  }
+  return room
+}
+
+function initCollab() {
+  const room = getRoomId()
+  ydoc = new Y.Doc()
+  provider = new WebrtcProvider('mok-' + room, ydoc)
+  awareness = provider.awareness
+
+  // Assign a random colour to the local cursor so collaborators are distinguishable
+  const hue = Math.floor(Math.random() * 360)
+  awareness.setLocalStateField('user', {
+    color: `hsl(${hue},70%,60%)`,
+    colorLight: `hsl(${hue},70%,85%)`,
+  })
+
+  provider.awareness.on('change', () => {
+    const peers = provider.awareness.getStates().size - 1  // minus self
+    document.getElementById('collab-count').textContent = peers > 0 ? `${peers} peer${peers > 1 ? 's' : ''}` : ''
+  })
+}
 let strudelPrebake = `//TODO: find a better way to do this
 window.registerFunc = (name, func) => {
   //ensures it will work in mondo notation
@@ -499,6 +535,7 @@ const DOCS = {
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
+  initCollab()
   addPane('strudel')
   buildPal()
   setupEventListeners()
@@ -590,17 +627,15 @@ function addPane(target = 'strudel') {
 
   document.getElementById('panes').appendChild(paneEl)
 
-  // Create CodeMirror editor
+  // Create CodeMirror editor — bind to a shared Y.Text so content syncs across peers
+  const ytext = ydoc ? ydoc.getText(`pane-${id}`) : null
   const cmEditor = createEditor(
     editorWrap,
     STARTERS[target] || '',
-    {
-      onChange: () => {} // future: live collab sync
-    },
-    () => {
-      // Slider dragged — re-eval this pane
-      evalPane(id)
-    }
+    { onChange: () => {} },
+    () => evalPane(id),
+    ytext,
+    awareness
   )
 
   // Bind Option+Enter (eval) and Ctrl+. (silence) inside CM
@@ -806,6 +841,12 @@ function openPbModal() {
 
 function closePbModal() { document.getElementById('pb-overlay').classList.remove('open') }
 
+function openCollabModal() {
+  document.getElementById('collab-link-url').textContent = location.href
+  document.getElementById('collab-overlay').classList.add('open')
+}
+function closeCollabModal() { document.getElementById('collab-overlay').classList.remove('open') }
+
 function switchPbTab(target, el) {
   currentPbTarget = target
   document.querySelectorAll('.pb-tab').forEach(t => t.classList.remove('active'))
@@ -826,6 +867,7 @@ const CMDS = [
   { sec:'Panes',    ico:'+', label:'Add TidalCycles pane', action:() => { addPane('tidal');    closePal() } },
   { sec:'Panes',    ico:'✕', label:'Remove active pane',   action:() => { const p=getActive(); if(p) removePane(p.id); closePal() } },
   { sec:'Prebake',  ico:'⚙', label:'Load prebake…',        action:() => { openPbModal(); closePal() } },
+  { sec:'Session',  ico:'⇌', label:'Collaborate…',          action:() => { openCollabModal(); closePal() } },
   { sec:'Session',  ico:'⎘', label:'Copy session link',    action:() => { navigator.clipboard.writeText(location.href).then(()=>log('link copied','ok')); closePal() } },
   { sec:'Playback', ico:'■', label:'Silence all', sc:'Ctrl+.', action:() => { silenceAll(); closePal() } },
   { sec:'Docs', ico:'?', label:'Strudel docs',      action:() => { window.open(DOCS.strudel, '_blank'); closePal() } },
@@ -871,7 +913,7 @@ function setupEventListeners() {
       e.preventDefault()
       document.getElementById('pal-bg').classList.contains('open') ? closePal() : openPal()
     }
-    if (e.key === 'Escape') { closePal(); closePbModal() }
+    if (e.key === 'Escape') { closePal(); closePbModal(); closeCollabModal() }
   })
 
   document.addEventListener('click', e => {
@@ -936,5 +978,17 @@ function setupEventListeners() {
 
   document.getElementById('pb-overlay').addEventListener('click', e => {
     if (e.target === document.getElementById('pb-overlay')) closePbModal()
+  })
+
+  document.getElementById('collab-close').onclick = closeCollabModal
+  document.getElementById('collab-copy-btn').onclick = () => {
+    navigator.clipboard.writeText(location.href).then(() => {
+      const btn = document.getElementById('collab-copy-btn')
+      btn.textContent = 'copied!'
+      setTimeout(() => { btn.textContent = 'copy' }, 1800)
+    })
+  }
+  document.getElementById('collab-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('collab-overlay')) closeCollabModal()
   })
 }

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>mok</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <!-- Strudel and Hydra loaded from CDN — they're too large to bundle -->
+  <script src="https://unpkg.com/@strudel/repl@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hydra-synth/dist/hydra-synth.js"></script>
+  <script type="module" crossorigin src="/mok-assets/mok-ClsVD9qv.js"></script>
+  <link rel="stylesheet" crossorigin href="/mok-assets/mok-B6yOaXA4.css">
+</head>
+<body>
+
+  <canvas id="hc"></canvas>
+
+  <div id="shell">
+    <div id="topbar">
+      <div id="back-cell"><a href="../index.html" class="back-link">← maiasullivan.com</a></div>
+      <div id="pane-headers"></div>
+      <div id="cmd-cell"><button class="chrome-btn" id="cmd-btn" title="Ctrl+J">⌘</button></div>
+    </div>
+
+    <!-- Slider bar: appears between topbar and panes when sliders are active -->
+    <div id="slider-bar"></div>
+
+    <div id="panes"></div>
+
+    <div id="botbar">
+      <div class="bot-l">
+        <span class="sdot" id="sdot"></span>
+        <button class="chrome-btn" id="log-btn">log</button>
+        <span class="collab-peers" id="collab-count"></span>
+      </div>
+      <button class="chrome-btn" id="silence-btn">silence ·</button>
+    </div>
+  </div>
+
+  <!-- Command Palette -->
+  <div id="pal-bg">
+    <div id="pal">
+      <div id="pal-top">
+        <span class="si">⌕</span>
+        <input id="pal-in" placeholder="command or search…" />
+      </div>
+      <div id="pal-body"></div>
+      <div class="pt">Ctrl+J / Cmd+J to toggle</div>
+    </div>
+  </div>
+
+  <!-- Prebake Modal -->
+  <div id="pb-overlay">
+    <div id="pb-modal">
+      <div id="pb-modal-head">
+        <h2>prebake</h2>
+        <button class="pb-close-btn" id="pb-close">✕</button>
+      </div>
+      <div class="pb-tabs">
+        <div class="pb-tab active" data-pb="strudel">strudel</div>
+        <div class="pb-tab" data-pb="hydra">hydra</div>
+      </div>
+      <div class="pb-section">
+        <span class="pb-label">load from file</span>
+        <div class="pb-url-row">
+          <label class="pb-btn pb-btn-primary" style="cursor:pointer;display:flex;align-items:center;gap:0.4rem">
+            ↑ choose file
+            <input id="pb-file" type="file" accept=".strudel,.js,.txt" style="display:none" />
+          </label>
+          <span class="pb-status" id="pb-url-status" style="display:flex;align-items:center;padding:0 0.5rem"></span>
+        </div>
+      </div>
+      <div class="pb-section">
+        <span class="pb-label">or paste / edit directly</span>
+        <textarea id="pb-code" class="pb-textarea" placeholder="// custom functions, registers, samples…"></textarea>
+      </div>
+      <div class="pb-footer">
+        <span class="pb-active-pill" id="pb-active-pill">● prebake active</span>
+        <div style="display:flex;gap:0.5rem;margin-left:auto">
+          <button class="pb-btn pb-btn-ghost" id="pb-clear-btn">clear</button>
+          <button class="pb-btn pb-btn-primary" id="pb-apply-btn">apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="log"></div>
+  <div id="flash"></div>
+
+</body>
+</html>

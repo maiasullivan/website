@@ -22,8 +22,8 @@ maiasullivan.com/          ← repo root, deployed to Cloudflare Pages
     ├── package.json
     ├── node_modules/
     └── src/
-        ├── main.js        ← all app logic (panes, eval, palette, prebake)
-        ├── editor.js      ← CodeMirror setup + inline slider widgets
+        ├── main.js        ← all app logic (panes, eval, palette, prebake, collab)
+        ├── editor.js      ← CodeMirror setup + inline slider widgets + yCollab
         └── style.css      ← all CSS (includes widget styles at bottom)
 ```
 
@@ -113,13 +113,13 @@ Cloudflare Pages is connected to the GitHub repo. Every push to `main` triggers 
 
 mok has a clean separation:
 
-- **`editor.js`** — everything CodeMirror: creates editors, defines the slider widget extension, handles syntax highlighting, exports `preprocessSliders()`
-- **`main.js`** — everything else: pane management, strudel/hydra/tidal eval, palette, prebake, event listeners
+- **`editor.js`** — everything CodeMirror: creates editors, defines the slider widget extension, handles syntax highlighting, exports `preprocessSliders()`. Also imports and applies `yCollab` for collaborative editing.
+- **`main.js`** — everything else: pane management, strudel/hydra/tidal eval, palette, prebake, collab init, event listeners
 
 ### Panes
 
 Up to 3 panes, each with:
-- A **CodeMirror editor** (replaces the old textarea)
+- A **CodeMirror editor** (bound to a Yjs `Y.Text` for collab sync)
 - A **hidden `strudel-editor` web component** for audio (invisible, drives the Web Audio engine)
 - A **target** (`strudel` | `hydra` | `tidal`)
 
@@ -161,9 +161,7 @@ Hydra uses the `hydra-synth` npm package, loaded from CDN:
 <script src="https://cdn.jsdelivr.net/npm/hydra-synth/dist/hydra-synth.js"></script>
 ```
 
-A single `<canvas id="hc">` is `position: absolute; inset: 0` inside `#shell`. When a hydra pane is active, the canvas shows through the transparent pane. Other panes are `background: transparent` so Hydra visuals fill the whole screen.
-
-`makeGlobal: true` is used so `osc()`, `out()`, `src()` etc. are available globally. Only one Hydra instance is created.
+A single `<canvas id="hc">` is `position: fixed; inset: 0` at z-index 0. The shell sits at z-index 1 with transparent panes so the canvas shows through everywhere. `makeGlobal: false` is used — Hydra functions are extracted from `h.synth` and passed as arguments to `new Function()`.
 
 **Hydra sliders**: slider values are substituted as plain numbers (not `steady()`).
 
@@ -184,6 +182,36 @@ This requires running a local flok server. See https://codeberg.org/munshkr/flok
 
 ---
 
+## Collaboration
+
+mok has built-in real-time collaborative editing using [Yjs](https://yjs.dev) + [y-webrtc](https://github.com/yjs/y-webrtc). No server required — peers connect directly via WebRTC using public signaling servers maintained by the Yjs team.
+
+### How it works
+
+1. On first load, a random **room ID** is generated and added to the URL (e.g. `?room=a3f8x2k`).
+2. Open the `⌘` palette → **Collaborate…** to see instructions and copy the invite link.
+3. Anyone who opens the link joins the same Yjs doc. Editor content syncs live as you type.
+4. Collaborator cursors appear as coloured highlights in the editor.
+5. A **peer count** (`1 peer`, `2 peers` …) appears in the bottom-left when others are connected.
+
+### What syncs
+
+- **Editor content** — live as you type, across all panes
+- **Cursors** — collaborator positions shown as coloured highlights
+
+### What doesn't sync (yet)
+
+- **Pane structure** — adding/removing panes isn't synced. All collaborators need to manually create matching panes in the same order for the Y.Text bindings to line up.
+- **Eval state** — pressing Option+Enter is local. Each person evals independently.
+- **Slider values** — slider positions are local to each client.
+
+### Caveats
+
+- Collaboration requires at least one peer to be online. There's no server-side persistence — if everyone closes the tab, the session state is gone (local code is still there).
+- The public signaling servers (`wss://signaling.yjs.dev`) are used only to help peers find each other. All content flows peer-to-peer and never touches a server.
+
+---
+
 ## The Slider System
 
 ### How it works
@@ -192,7 +220,7 @@ This requires running a local flok server. See https://codeberg.org/munshkr/flok
 
 2. **Widget rendering** — each `slider(...)` call is replaced with a `SliderWidget` — a CodeMirror `WidgetType` that renders an `<input type="range">` inline in the text.
 
-3. **Preprocessing** — when you hit `Ctrl+Enter`, `preprocessSliders(code, target)` runs before eval. It scans the raw code, looks up the current value for each slider name in `sliderRegistry`, and substitutes the `slider(...)` call with:
+3. **Preprocessing** — when you hit `Option+Enter`, `preprocessSliders(code, target)` runs before eval. It scans the raw code, looks up the current value for each slider name in `sliderRegistry`, and substitutes the `slider(...)` call with:
    - `steady(value)` for Strudel (so it works as a Pattern signal — `.mul()`, `.range()` etc. all work)
    - `value` (plain number) for Hydra and TidalCycles
 
@@ -211,7 +239,7 @@ slider('name', 10, 0, 100, 0.5)   // named, explicit range + step
 
 **Smart range**: for a default value `v`:
 - `min = 0`, `max = v × 4`
-- `step` = one order of magnitude below `v` (e.g. default 440 → step 1)
+- `step` = two orders of magnitude below `v` (e.g. default 440 → step 0.1)
 - If `v = 0`: range is `-1` to `1`
 
 ### `sliderRegistry`
@@ -219,8 +247,8 @@ slider('name', 10, 0, 100, 0.5)   // named, explicit range + step
 A plain object exported from `editor.js`:
 ```js
 sliderRegistry = {
-  freq:  { value: 440, min: 0, max: 1760, step: 1 },
-  speed: { value: 1,   min: 0, max: 4,    step: 0.01 },
+  freq:  { value: 440, min: 0, max: 1760, step: 0.1 },
+  speed: { value: 1,   min: 0, max: 4,    step: 0.001 },
 }
 ```
 Values persist across evals — dragging sets `sliderRegistry[name].value`, which is read on the next eval.
@@ -236,17 +264,7 @@ Prebake code runs before each eval. Used for:
 
 Separate prebake stores for Strudel and Hydra. Set via `⌘ → Load prebake…`.
 
-**Example strudel prebake** (`prebake.strudel`):
-```js
-samples('github:tidalcycles/Dirt-Samples/master/')
-register('acidenv', (x, pat) =>
-  pat.lpf(100).lpenv(x * 9).lps(.2).lpd(.12)
-)
-```
-
-Then in your code: `.acidenv(slider('env', 0.5))`
-
-See https://github.com/switchangel/strudel-scripts for example prebake files.
+The default Strudel prebake is loaded from `prebake.strudel` (in `mok-src/src/main.js` as an embedded string) and includes custom registers: `acidenv`, `o`, `ar`, `track`, `blockArrange`, `fill`, `trancegate`, `tgate`, `dly`, `grab`, `rlpf`, `rhpf`, `vstruct`, `acid`, `stxt`, `sf`, `swap`, `sc`, `ifit`, `trancearp`, `comb`, `strum`, `humanize`, `glide`, `glitch`, `oneshot`, `filtval`, `bend`, and more. See the embedded string in `main.js` for the full source.
 
 ---
 
@@ -261,8 +279,12 @@ Open with `⌘J` or `Ctrl+J`. Commands:
 | Add TidalCycles pane | Adds a new tidal editor pane |
 | Remove active pane | Removes the focused pane |
 | Load prebake… | Opens prebake modal |
-| Copy session link | Copies current URL |
+| Collaborate… | Shows collab instructions + invite link |
+| Copy session link | Copies current URL (includes room ID) |
 | Silence all | Stops all audio |
+| Strudel docs | Opens strudel.cc/functions/intro/ |
+| Hydra docs | Opens hydra.ojack.xyz/functions/ |
+| TidalCycles docs | Opens tidalcycles.org/docs/ |
 
 ---
 
@@ -270,7 +292,7 @@ Open with `⌘J` or `Ctrl+J`. Commands:
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+Enter` / `Cmd+Enter` | Eval selected text or whole buffer |
+| `Option+Enter` | Eval selected text or whole buffer |
 | `Ctrl+.` / `Cmd+.` | Silence all |
 | `Ctrl+J` / `Cmd+J` | Open/close command palette |
 | `Escape` | Close palette / modal |
@@ -286,43 +308,9 @@ Open with `⌘J` or `Ctrl+J`. Commands:
 --blue:  rgb(13,25,180) /* accent — used for sliders, links, active states */
 --muted: #5a5550      /* secondary text */
 --line:  #2a2622      /* borders */
---green: #3ddc84      /* status: playing */
+--green: #3ddc84      /* status: playing, peer count */
 --bar:   1.8rem       /* height of topbar and botbar */
 ```
-
----
-
-## Next Steps / TODO
-
-### Collab (Option 1 — shared editor sync)
-Uses WebSockets + CRDT (Yjs). Flok's full implementation:
-- Server: https://codeberg.org/munshkr/flok/src/branch/main/packages/server
-- Client sync: uses `y-codemirror.next` (Yjs binding for CodeMirror 6)
-- Deploy relay on Railway: https://railway.app
-
-### Collab (Option 2 — shared performance state)
-Simpler: one performer, audience watches. State broadcast only. Much easier to build. Recommended starting point.
-
-### TidalCycles local relay
-```bash
-npm install -g flok-web flok-repl
-flok-web          # start local server on :3000
-npx flok-repl -H ws://localhost:3000 -s <session> -t tidal -T user:maia
-```
-
-### Visual pages (`/visuals`, `/sound`)
-Add more pages to the site per the architecture:
-```
-maiasullivan.com/
-├── /              ← landing (done)
-├── /mok           ← live coding (done)
-├── /visuals       ← hydra sketches (TODO)
-└── /sound         ← strudel experiments (TODO)
-```
-
-### Hosting
-- **Static pages** (landing, visuals, sound): Cloudflare Pages — already set up
-- **Realtime server** (collab): Railway — recommended, easiest for creative coding infra
 
 ---
 
@@ -343,6 +331,9 @@ maiasullivan.com/
 | `@codemirror/commands` | Default keybindings, history |
 | `@codemirror/language` | Syntax highlighting infrastructure |
 | `@codemirror/lang-javascript` | JS syntax support for strudel/hydra code |
+| `yjs` | CRDT for conflict-free collaborative editing |
+| `y-webrtc` | WebRTC transport for Yjs (serverless collab) |
+| `y-codemirror.next` | Yjs binding for CodeMirror 6 |
 
 ---
 

@@ -32,6 +32,7 @@
       <div class="bot-l">
         <span class="sdot" id="sdot"></span>
         <button class="chrome-btn" id="log-btn">log</button>
+        <span class="collab-peers" id="collab-count"></span>
       </div>
       <button class="chrome-btn" id="silence-btn">silence ·</button>
     </div>
@@ -79,6 +80,43 @@
         <div style="display:flex;gap:0.5rem;margin-left:auto">
           <button class="pb-btn pb-btn-ghost" id="pb-clear-btn">clear</button>
           <button class="pb-btn pb-btn-primary" id="pb-apply-btn">apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collaborate Modal -->
+  <div id="collab-overlay">
+    <div id="collab-modal">
+      <div id="collab-modal-head">
+        <h2>collaborate</h2>
+        <button class="pb-close-btn" id="collab-close">✕</button>
+      </div>
+      <div class="collab-body">
+        <p class="collab-intro">mok uses peer-to-peer sync — no server, no account. share the link below and anyone who opens it joins your session in real time.</p>
+        <div class="collab-section">
+          <span class="pb-label">your session link</span>
+          <div class="collab-link-row">
+            <span class="collab-link-url" id="collab-link-url"></span>
+            <button class="pb-btn pb-btn-primary" id="collab-copy-btn">copy</button>
+          </div>
+        </div>
+        <div class="collab-section">
+          <span class="pb-label">how it works</span>
+          <ul class="collab-list">
+            <li>each session has a unique room ID in the URL</li>
+            <li>editor content syncs live as you type</li>
+            <li>collaborator cursors appear as coloured highlights</li>
+            <li>peer count shows in the bottom-left corner</li>
+          </ul>
+        </div>
+        <div class="collab-section collab-note">
+          <span class="pb-label">heads up</span>
+          <ul class="collab-list">
+            <li>pane structure isn't synced — everyone needs to add matching panes manually</li>
+            <li>eval is local — each person hits opt+enter independently</li>
+            <li>session lives only while at least one tab is open</li>
+          </ul>
         </div>
       </div>
     </div>
