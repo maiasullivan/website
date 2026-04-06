@@ -4,6 +4,7 @@ import { createEditor, preprocessSliders, sliderRegistry } from './editor.js'
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let panes = [], paneCount = 0, logVis = false
 let hydraInstance = null
+let lastHydraCode = ''
 let strudelPrebake = '', hydraPrebake = ''
 let currentPbTarget = 'strudel'
 
@@ -211,8 +212,14 @@ async function evalStrudel(p, code) {
 function evalHydra(code) {
   if (!code) return
   try {
-    getHydra()
-    new Function(code)()
+    const h = getHydra()
+    // In Vite's module scope, new Function() can't see window globals reliably.
+    // Explicitly destructure hydra's synth object so osc/out/src etc are in scope.
+    const synth = h.synth || window
+    const keys = Object.keys(synth).filter(k => typeof synth[k] !== 'undefined')
+    const vals = keys.map(k => synth[k])
+    const fn = new Function(...keys, code)
+    fn(...vals)
     setStatus('playing'); log('eval → hydra', 'ok')
   } catch(e) { setStatus('error'); log('hydra: ' + e.message, 'err') }
 }

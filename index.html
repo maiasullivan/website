@@ -126,6 +126,14 @@
       margin-bottom: 3rem;
     }
 
+    .hero-bio a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid currentColor;
+      transition: opacity 0.2s;
+    }
+    .hero-bio a:hover { opacity: 0.7; }
+
     .mok-card {
       display: inline-flex;
       flex-direction: column;
@@ -352,8 +360,8 @@
       <p class="hero-eyebrow">artist in the making · software engineer</p>
       <h1 class="hero-title">maia<br /><em>sullivan</em></h1>
       <p class="hero-bio">
-        i make things with sound, code and visual mediums.<br />
-        currently working on a rendition of flok.cc, a platform to host live coding sound and visual.
+        making things with sound, code and visual mediums.<br />
+        currently working on a rendition of <a href="https://flok.cc" target="_blank" rel="noopener noreferrer">flok.cc</a>, a platform to host live coding sound and visual.
       </p>
       <a href="mok.html" class="mok-card">
         <span>mok</span>
@@ -368,7 +376,7 @@
         <div class="ring ring-2"></div>
         <div class="ring ring-3"></div>
         <div class="center-label">
-          <span>live /<br/>coded</span>
+          <span>website<br/>in progress</span>
           <strong>Melbourne</strong>
         </div>
       </div>
@@ -378,12 +386,12 @@
   <div class="works-strip">
     <span class="works-label">interests</span>
     <div class="works-list">
-      <span class="work-item">live coding</span>
       <span class="work-item">painting</span>
       <span class="work-item">sketching</span>
       <span class="work-item">reading</span>
       <span class="work-item">history</span>
       <span class="work-item">artifical intelligence</span>
+      <span class="work-item">live coding</span>
     </div>
   </div>
 
