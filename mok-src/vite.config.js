@@ -24,8 +24,9 @@ export default defineConfig({
         const repoRoot = resolve(__dirname, '..')
         const dist     = resolve(__dirname, 'dist')
 
-        // mok.html → repo root
-        copyFileSync(`${dist}/mok.html`, `${repoRoot}/mok.html`)
+        // Vite 8 outputs index.html (not mok.html) — copy and rename
+        const srcHtml = existsSync(`${dist}/mok.html`) ? `${dist}/mok.html` : `${dist}/index.html`
+        copyFileSync(srcHtml, `${repoRoot}/mok.html`)
         console.log('✓ mok.html → repo root')
 
         // mok-assets/ → repo root
