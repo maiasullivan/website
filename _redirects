@@ -1,1 +1,3 @@
-/mok    /mok.html    200
+/index.html   /      301
+/mok.html     /mok   301
+/mok          /mok.html   200
