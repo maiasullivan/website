@@ -29,7 +29,6 @@ function initCollab() {
   provider = new WebrtcProvider('mok-' + room, ydoc)
   awareness = provider.awareness
 
-  // Assign a random colour to the local cursor so collaborators are distinguishable
   const hue = Math.floor(Math.random() * 360)
   awareness.setLocalStateField('user', {
     color: `hsl(${hue},70%,60%)`,
@@ -581,7 +580,6 @@ function addPane(target = 'strudel') {
   if (panes.length >= 3) return
   const id = ++paneCount
 
-  // Header tab
   const ph = document.createElement('div')
   ph.className = 'ph'; ph.id = `ph-${id}`
 
@@ -611,7 +609,6 @@ function addPane(target = 'strudel') {
   ph.appendChild(tBtn); ph.appendChild(closeBtn)
   document.getElementById('pane-headers').appendChild(ph)
 
-  // Editor pane — CodeMirror replaces textarea
   const paneEl = document.createElement('div')
   paneEl.className = 'pane' + (target === 'hydra' ? ' is-hydra' : '')
   paneEl.id = `pane-${id}`
@@ -620,14 +617,12 @@ function addPane(target = 'strudel') {
   editorWrap.className = 'cm-wrap'
   paneEl.appendChild(editorWrap)
 
-  // Hidden strudel engine
   const se = document.createElement('div')
   se.className = 'se'; se.id = `se-${id}`
   paneEl.appendChild(se)
 
   document.getElementById('panes').appendChild(paneEl)
 
-  // Create CodeMirror editor — bind to a shared Y.Text so content syncs across peers
   const ytext = ydoc ? ydoc.getText(`pane-${id}`) : null
   const cmEditor = createEditor(
     editorWrap,
@@ -638,7 +633,6 @@ function addPane(target = 'strudel') {
     awareness
   )
 
-  // Bind Option+Enter (eval) and Ctrl+. (silence) inside CM
   cmEditor.dom.addEventListener('keydown', e => {
     if (e.altKey && e.key === 'Enter') { e.preventDefault(); evalPane(id) }
     if ((e.ctrlKey || e.metaKey) && e.key === '.')     { e.preventDefault(); silenceAll() }
@@ -671,7 +665,6 @@ function setPaneTarget(id, target) {
   if (p.target === target) return
   if (p.target === 'strudel') stopStrudel(p)
   p.target = target
-  // Replace editor content with starter
   p.cmEditor.dispatch({ changes: { from: 0, to: p.cmEditor.state.doc.length, insert: STARTERS[target] || '' } })
   p.ph.querySelector('.tlbl').textContent = target === 'tidal' ? 'TidalCycles' : target
   p.ph.querySelectorAll('.topt').forEach(o => o.classList.toggle('active', o.dataset.t === target))
@@ -690,8 +683,7 @@ function initStrudel(pane) {
     wrap.appendChild(el)
     pane.strudelEl = el; pane.strudelReady = true
 
-    // Strudel's connectedCallback can briefly disrupt Hydra's render loop.
-    // Re-eval the last hydra code after init settles to restore visuals.
+    // strudel init can briefly disrupt hydra — re-eval after it settles
     if (lastHydraCode) setTimeout(() => {
       if (lastHydraCode && panes.some(p => p.target === 'hydra')) evalHydra(lastHydraCode)
     }, 300)
@@ -713,11 +705,8 @@ async function evalPane(id) {
   if (!p) return
   doFlash()
 
-  // Get code from CodeMirror
   const raw = p.cmEditor.state.doc.toString()
   if (!raw.trim()) return
-
-  // Preprocess slider() calls — substitutes values for eval
   const processed = preprocessSliders(raw, p.target)
 
   if (p.target === 'strudel') {
@@ -745,18 +734,16 @@ async function evalStrudel(p, code) {
     setStatus('playing'); log('eval → strudel', 'ok')
   } catch(e) {
     setStatus('error')
-    // Strudel errors are often nested — unwrap to the most useful message
     const msg = e?.cause?.message || e?.message || String(e)
     log('strudel: ' + msg, 'err')
   }
 }
 
-// new Function() wraps code starting at line 3 in Chrome, line 2 in Firefox
+// new Function() offsets line numbers: +2 in Chrome, +1 in Firefox
 const FN_LINE_OFFSET = /Chrome/.test(navigator.userAgent) ? 2 : 1
 
 function fmtErr(e, lineOffset = 0) {
   const base = e.message || String(e)
-  // Pull line/col from stack trace (works in Chrome & Firefox)
   const m = (e.stack || '').match(/<anonymous>:(\d+):(\d+)/)
   if (m) {
     const line = Math.max(1, parseInt(m[1]) - lineOffset)

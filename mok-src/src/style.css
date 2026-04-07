@@ -17,8 +17,8 @@ html, body {
   font-family: 'Space Mono', monospace;
 }
 
-/* ── HYDRA CANVAS ──────────────────────────────────────────────────────────────
-   Fixed behind shell (z:0 < shell z:1). Transparent panes let it show through. */
+/* ── HYDRA CANVAS ─────────────────────────────────────────────────────────────
+   z:0, fixed behind shell. transparent panes let it show through. */
 #hc {
   position: fixed; inset: 0;
   width: 100vw; height: 100vh;
@@ -26,15 +26,15 @@ html, body {
 }
 
 /* ── SHELL ─────────────────────────────────────────────────────────────────────
-   z-index:1 puts shell above canvas. Transparent panes reveal it. */
+   z:1, sits above canvas. */
 #shell {
   position: fixed; inset: 0;
   z-index: 1;
   display: flex; flex-direction: column;
 }
 
-/* ── TOP BAR ───────────────────────────────────────────────────────────────────
-   NO z-index — same reason as #shell. transparent bg lets hydra bleed through. */
+/* ── TOP BAR ──────────────────────────────────────────────────────────────────
+   no z-index — transparent so hydra bleeds through. */
 #topbar {
   height: var(--bar); flex-shrink: 0;
   display: flex; align-items: stretch;
@@ -124,8 +124,7 @@ html, body {
 .chrome-btn:hover { color: var(--ink); }
 
 /* ── PANES ─────────────────────────────────────────────────────────────────────
-   NO z-index on #panes — would create a stacking context, sealing transparent
-   hydra pane away from the canvas. */
+   no z-index on #panes — stacking context would seal the hydra canvas out. */
 #panes { flex: 1; display: flex; min-height: 0; }
 
 .pane {
@@ -133,15 +132,14 @@ html, body {
   display: flex; flex-direction: column;
   min-width: 0;
   border-right: 1px solid var(--line);
-  background: transparent; /* hydra pane: stays transparent so canvas shows */
+  background: transparent;
 }
 .pane:last-child { border-right: none; }
 
-/* Non-hydra panes: transparent so canvas shows everywhere */
 .pane:not(.is-hydra) { background: transparent; }
 
-/* ── EDITORS ───────────────────────────────────────────────────────────────────
-   NO z-index on .pane-editor — would create a stacking context. */
+/* ── EDITORS ──────────────────────────────────────────────────────────────────
+   no z-index on .pane-editor — stacking context. */
 .pane-editor {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
@@ -155,14 +153,13 @@ html, body {
   background: transparent;
 }
 
-/* All editors: transparent so canvas shows through */
 .pane.is-hydra .pane-editor {
   background: transparent !important;
   color: rgba(240,235,224,0.92);
   text-shadow: 0 1px 3px rgba(0,0,0,0.9);
 }
 
-/* Strudel/other panes: text-shadow keeps code readable over canvas */
+/* text-shadow keeps code readable over canvas */
 .pane:not(.is-hydra) .cm-content {
   text-shadow: 0 1px 4px rgba(0,0,0,0.95);
 }
@@ -173,8 +170,8 @@ html, body {
   overflow: hidden; opacity: 0; pointer-events: none;
 }
 
-/* ── BOTTOM BAR ────────────────────────────────────────────────────────────────
-   NO z-index. transparent bg lets hydra show through. */
+/* ── BOTTOM BAR ───────────────────────────────────────────────────────────────
+   no z-index. transparent. */
 #botbar {
   height: var(--bar); flex-shrink: 0;
   display: flex; align-items: center;
@@ -199,8 +196,8 @@ html, body {
 }
 .collab-peers:empty { display: none; }
 
-/* ── Collaborator cursors (yCollab) ──────────────────────────────────────────── */
-.cm-ySelectionInfo { display: none; }  /* hide name tooltip — too noisy */
+/* ── COLLAB CURSORS ───────────────────────────────────────────────────────── */
+.cm-ySelectionInfo { display: none; }
 .cm-ySelection { opacity: 0.35; }
 
 /* ── LOG ───────────────────────────────────────────────────────────────────── */
@@ -418,8 +415,8 @@ strudel-editor {
 }
 #flash.on { opacity: 1; }
 
-/* ── CODEMIRROR ────────────────────────────────────────────────────────────── */
-/* NO z-index on .cm-wrap — would create a stacking context */
+/* ── CODEMIRROR ───────────────────────────────────────────────────────────── */
+/* no z-index on .cm-wrap — stacking context */
 .cm-wrap {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;
@@ -430,7 +427,6 @@ strudel-editor {
   background: transparent !important;
 }
 
-/* All panes: ensure CodeMirror internals don't paint an opaque background */
 .cm-scroller,
 .cm-gutters,
 .cm-content {

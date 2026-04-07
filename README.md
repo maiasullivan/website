@@ -337,12 +337,12 @@ Open with `⌘J` or `Ctrl+J`. Commands:
 
 ---
 
-## License Notes
+## Licence Notes
 
-- **Strudel** is AGPL-3.0. If you distribute mok publicly with Strudel integrated, mok must also be open source under a compatible license.
+- **Strudel** is AGPL-3.0. If you distribute mok publicly with Strudel integrated, mok must also be open source under a compatible licence.
 - **Hydra** is AGPL-3.0. Same applies.
 - **Flok** is GPL-3.0.
-- This site's own code (landing page, mok UI/shell) is yours to license as you like.
+- This site's own code (landing page, mok UI/shell) is yours to licence as you like.
 
 ---
 

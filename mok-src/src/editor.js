@@ -10,7 +10,6 @@ import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { yCollab } from 'y-codemirror.next'
 
 // ── Slider Widget ─────────────────────────────────────────────────────────────
-// Renders an inline <input type="range"> at the position of slider() args
 
 class SliderWidget extends WidgetType {
   constructor({ name, value, min, max, step, onChange }) {
@@ -84,7 +83,6 @@ function smartRange(val) {
 }
 
 function parseSliderCall(argsStr) {
-  // Returns { name, def, min, max, step } from the args string
   const args = []
   let current = '', inStr = false, strChar = ''
   for (const c of argsStr) {
@@ -122,7 +120,6 @@ function coerce(s) {
 }
 
 // ── Slider Decoration Extension ───────────────────────────────────────────────
-// Scans the document for slider(...) calls and inserts widgets
 
 export function sliderExtension(onSliderChange) {
   return ViewPlugin.fromClass(class {
@@ -151,7 +148,6 @@ export function sliderExtension(onSliderChange) {
         const rMax  = max  !== undefined ? max  : smart.mx
         const rStep = step !== undefined ? step : smart.st
 
-        // Register slider if new
         if (!sliderRegistry[name]) {
           sliderRegistry[name] = { value: def ?? 0.5, min: rMin, max: rMax, step: rStep }
         } else {
@@ -160,7 +156,6 @@ export function sliderExtension(onSliderChange) {
           sliderRegistry[name].step = rStep
         }
 
-        // Place widget AFTER the closing paren of slider(...)
         const from = m.index
         const to   = m.index + m[0].length
 
@@ -174,7 +169,6 @@ export function sliderExtension(onSliderChange) {
           }
         })
 
-        // Replace the entire slider(...) call with the widget
         decos.push(
           Decoration.replace({
             widget,
@@ -189,7 +183,6 @@ export function sliderExtension(onSliderChange) {
 }
 
 // ── Preprocessor ──────────────────────────────────────────────────────────────
-// Called before eval — substitutes slider() with current values
 export function preprocessSliders(code, target) {
   let autoIdx = 0
   return code.replace(/slider\(([^)]*)\)/g, (match, argsStr) => {
