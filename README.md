@@ -1,7 +1,6 @@
 # maiasullivan.com
 
-Personal website for Maia Sullivan — live coder, artist, maker.
-Built in Melbourne. Coded live.
+Personal website for Maia Sullivan + mok
 
 ---
 
