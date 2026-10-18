@@ -1,0 +1,162 @@
+/* site/style.css — two visual languages, kept apart by the grid:
+   left  = mok's editor (Space Mono over the live canvas)
+   right = a plain-html document, straight on the canvas, in the editor's font and on
+           its line grid (same size, line-height and top offset), so text and code align
+   the strip of raw hydra between them is the separation. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  /* mok */
+  --bg: #0e0c0a;
+  --code: #f0ebe0;
+  --muted: #5a5550;
+  --line: #2a2622;
+  --green: #3ddc84;
+  --blue: rgb(13, 25, 180);
+  /* document */
+  --paper: #f5f0e8;
+  --text: #ffffff;
+  --underline: #b48cff;  /* purple, so links read as links on a busy canvas */
+
+  /* the editor's metrics (mokTheme in editor.js) — the document shares them */
+  --fs: 0.88rem;
+  --lh: 1.75;
+  --top: calc(1.4rem + 4px);  /* scroller padding + .cm-content's own 4px */
+  --bar: 1.8rem;  /* mok's bar height */
+  --muted-bar: #a49c90;  /* mok's --muted, lifted a touch to read over the patch */
+}
+
+html, body { height: 100%; margin: 0; overflow: hidden; background: #000; }
+
+#hc {
+  position: fixed; inset: 0;
+  width: 100vw; height: 100vh;
+  z-index: 0; pointer-events: none;
+}
+
+#layout {
+  position: fixed; inset: 0; z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(24rem, 44%) minmax(2rem, 1fr) minmax(0, 36rem);
+  grid-template-rows: var(--bar) minmax(0, 1fr);
+  grid-template-areas: "top top top" "code . doc";
+}
+
+/* ── TOP BAR (mok's, transparent so hydra bleeds through) ───────────────────── */
+
+#topbar {
+  grid-area: top;
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid var(--line);
+}
+.bar-cell {
+  display: flex; align-items: center;
+  padding: 0 0.9rem;
+  border-right: 1px solid var(--line);
+  color: var(--muted-bar);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.6rem; letter-spacing: 0.12em;
+  text-transform: uppercase; white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+}
+
+/* ── THE DOCUMENT ───────────────────────────────────────────────────────────── */
+/* every block is one or more whole lines, and gaps are one blank line,
+   so the text stays on the same rows as the code */
+
+#sheet {
+  grid-area: doc;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--top) 2rem 4rem 0;
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: var(--fs);
+  line-height: var(--lh);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.95);  /* same as the code */
+}
+
+#sheet p, #sheet ul, #sheet h3 { margin: 0 0 calc(var(--lh) * 1em); }
+#sheet h3 { font-size: 1em; font-weight: bold; margin-bottom: 0; }
+#sheet ul { padding-left: 2ch; list-style: '- '; margin: 0 0 calc(var(--lh) * 1em); }
+
+/* the four names: one per line, and each section unfolds right under its name */
+#nav details[open] > :not(summary) { margin-left: 2ch; }
+#nav details[open] > summary { margin-bottom: calc(var(--lh) * 1em); }
+#nav summary { list-style: none; cursor: pointer; width: fit-content; }
+#nav summary::-webkit-details-marker { display: none; }
+
+/* links and the section names share one look */
+#sheet a, #nav summary {
+  color: var(--text);
+  text-decoration: underline 2px var(--underline);
+  text-underline-offset: 3px;
+}
+#sheet a:hover, #sheet a:focus-visible,
+#nav summary:hover, #nav summary:focus-visible { color: var(--underline); outline: none; }
+#nav details[open] > summary { color: var(--underline); }
+
+/* arrow beside each name: ↓ appears on hover (it'll open), ↑ stays while open (it'll fold).
+   inline-block so the link underline doesn't run under it */
+#nav summary::after {
+  content: '↓';
+  display: inline-block;
+  margin-left: 1ch;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+#nav summary:hover::after, #nav summary:focus-visible::after { opacity: 1; }
+#nav details[open] > summary::after { content: '↑'; opacity: 1; }
+/* résumé lines: a year column, then the entry (wrapped lines hang under the entry) */
+#sheet ul.cv { list-style: none; padding-left: 0; }
+#sheet ul.cv li { display: grid; grid-template-columns: 11ch 1fr; }  /* fits "2024–2025" */
+#sheet ul.cv span { color: rgba(255,255,255,0.65); }
+
+#sheet .dim { color: rgba(255,255,255,0.65); font-style: italic; }
+
+/* ── THE EDITOR (mok) ───────────────────────────────────────────────────────── */
+
+#code {
+  grid-area: code;
+  min-height: 0;
+  display: flex; flex-direction: column;
+  /* a soft shade so code reads over bright frames without boxing it in */
+  background: linear-gradient(to left, rgba(0,0,0,0.1), rgba(0,0,0,0.4));
+  font-family: 'Space Mono', monospace;
+  color: var(--code);
+  transition: opacity 0.5s ease;
+}
+
+
+#editor { flex: 1; min-height: 0; }
+#editor .cm-content { text-shadow: 0 1px 4px rgba(0,0,0,0.95); }
+#editor .cm-editor.cm-focused { outline: none; } /* as in mok's style.css */
+
+#err {
+  flex-shrink: 0;
+  padding: 0.5rem 2rem 1rem;
+  font-size: 0.7rem;
+  color: #e06050;
+  text-shadow: 0 1px 3px #000;
+}
+#err[hidden] { display: none; }
+
+#flash {
+  position: fixed; inset: 0;
+  background: rgba(13,25,180,0.05);
+  pointer-events: none; opacity: 0; z-index: 300; transition: opacity 0.07s;
+}
+#flash.on { opacity: 1; }
+
+/* ── NARROW: document on top, editor below ──────────────────────────────────── */
+
+@media (max-width: 820px) {
+  #layout {
+    grid-template-columns: 1fr;
+  }
+  #layout { grid-template-rows: var(--bar) auto minmax(0, 1fr); grid-template-areas: "top" "doc" "code"; }
+  /* 2rem sides, to line up with the editor's own padding */
+  #sheet { max-height: 50vh; padding: var(--top) 2rem 0; }
+  #code { margin-top: 16px; background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.4)); }
+}
